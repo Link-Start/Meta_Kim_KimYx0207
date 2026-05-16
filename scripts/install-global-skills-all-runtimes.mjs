@@ -1739,10 +1739,9 @@ async function installClaudePlugins() {
   // Registry: marketplace-id -> GitHub repo URL (marketplace.json's "name" field
   // becomes the marketplace-id used in "plugin@marketplace" spec).
   const MARKETPLACE_URLS = {
+    ecc: "https://github.com/affaan-m/everything-claude-code",
     "superpowers-marketplace":
       "https://github.com/obra/superpowers-marketplace",
-    "everything-claude-code":
-      "https://github.com/affaan-m/everything-claude-code",
   };
 
   if (dryRun) {
@@ -1950,6 +1949,7 @@ async function installClaudePlugins() {
     // spec format is "bareName@marketplace" — resolve repo from skills.json manifest
     const pluginRepoMap = {
       superpowers: "obra/superpowers",
+      ecc: "affaan-m/everything-claude-code",
       "everything-claude-code": "affaan-m/everything-claude-code",
       "code-simplifier": "claude-plugins-official/code-simplifier",
       "rust-analyzer-lsp": "claude-plugins-official/rust-analyzer-lsp",
@@ -1968,10 +1968,10 @@ async function installClaudePlugins() {
     const localVersion = localRecord?.version ?? null;
 
     if (!updateMode) {
-      // Non-update mode: skip if bare name is already installed
-      if (installedNames.has(bareName)) {
+      // Non-update mode: skip only when the canonical full spec is installed.
+      if (localRecord) {
         console.log(
-          `${C.yellow}⊘${C.reset} ${C.dim}${t.skipAlreadyInstalled(bareName)}${C.reset}`,
+          `${C.yellow}⊘${C.reset} ${C.dim}${t.skipAlreadyInstalled(spec)}${C.reset}`,
         );
         continue;
       }
@@ -2015,6 +2015,7 @@ async function installClaudePlugins() {
       console.warn(
         `${C.yellow}⚠${C.reset} ${t.warnPluginFailed(spec, p.status)}`,
       );
+      continue;
     } else if (updateMode) {
       console.log(`${C.green}✓${C.reset} ${t.pluginUpdated(spec)}`);
     }

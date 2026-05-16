@@ -71,6 +71,7 @@ const EXPECTED_PUBLIC_DISPLAY_REQUIRES = [
 const EXPECTED_CLAUDE_HOOK_COMMANDS = [
   "node .claude/hooks/block-dangerous-bash.mjs",
   "node .claude/hooks/pre-git-push-confirm.mjs",
+  "node .claude/hooks/enforce-agent-dispatch.mjs",
   "node .claude/hooks/post-format.mjs",
   "node .claude/hooks/post-typecheck.mjs",
   "node .claude/hooks/post-console-log-warn.mjs",
@@ -79,6 +80,7 @@ const EXPECTED_CLAUDE_HOOK_COMMANDS = [
   "node .claude/hooks/stop-compaction.mjs",
   "node .claude/hooks/stop-console-log-audit.mjs",
   "node .claude/hooks/stop-completion-guard.mjs",
+  "node .claude/hooks/stop-spine-cleanup.mjs",
 ];
 
 const GRAPHIFY_MAX_REPORT_AGE_DAYS = 14;
@@ -1349,14 +1351,21 @@ async function validateDocumentationFacts() {
   const testFiles = await walkFilesByExtensions(path.join(repoRoot, "tests"), [
     ".mjs",
   ]);
-  const knownGapsPath = path.join(repoRoot, "tests", "fixtures", "known-doc-gaps.json");
+  const knownGapsPath = path.join(
+    repoRoot,
+    "tests",
+    "fixtures",
+    "known-doc-gaps.json",
+  );
   const knownDocGaps = (await exists(knownGapsPath))
     ? JSON.parse(await fs.readFile(knownGapsPath, "utf8"))
     : [];
   for (const filePath of testFiles) {
     const raw = await fs.readFile(filePath, "utf8");
     const relativePath = toRepoRelative(filePath);
-    const docGapWarnings = [...raw.matchAll(/console\.warn\(([\s\S]*?DOC GAP[\s\S]*?)\);/g)];
+    const docGapWarnings = [
+      ...raw.matchAll(/console\.warn\(([\s\S]*?DOC GAP[\s\S]*?)\);/g),
+    ];
     for (const warning of docGapWarnings) {
       const message = warning[1];
       const allowed = knownDocGaps.some(
@@ -1828,7 +1837,12 @@ async function validateClaudeSettings() {
 
   assert(
     hooks.PreToolUse[0]?.matcher === "Bash",
-    "canonical Claude settings PreToolUse must target Bash.",
+    "canonical Claude settings PreToolUse[0] must target Bash.",
+  );
+  assert(
+    hooks.PreToolUse[1]?.matcher ===
+      "Write|Edit|Bash|Agent|MultiEdit|NotebookEdit",
+    "canonical Claude settings PreToolUse[1] must target execution + agent tools.",
   );
   assert(
     hooks.PostToolUse[0]?.matcher === "Edit|Write",
@@ -1859,6 +1873,32 @@ async function validateMcpConfig() {
     "canonical/runtime-assets/claude/mcp.json is missing meta-kim-runtime.",
   );
   assert(server.command === "node", "meta-kim-runtime must run through node.");
+  assert(
+    server.args?.includes("__REPO_ROOT__/scripts/mcp/meta-runtime-server.mjs"),
+    "canonical/runtime-assets/claude/mcp.json must use the __REPO_ROOT__ MCP template path.",
+  );
+
+  for (const relativePath of [".mcp.json", ".cursor/mcp.json"]) {
+    const runtimeMcpPath = path.join(repoRoot, relativePath);
+    if (!(await exists(runtimeMcpPath))) continue;
+    const runtimeConfig = JSON.parse(await fs.readFile(runtimeMcpPath, "utf8"));
+    const runtimeServer = runtimeConfig.mcpServers?.["meta-kim-runtime"];
+    if (!runtimeServer) continue;
+    const runtimeArg = runtimeServer.args?.[0] ?? "";
+    assert(
+      !runtimeArg.includes("__REPO_ROOT__") &&
+        !runtimeArg.includes("REPLACE_WITH_REPO_ROOT"),
+      `${relativePath} must not contain an unresolved MCP path placeholder.`,
+    );
+    assert(
+      path.isAbsolute(runtimeArg),
+      `${relativePath} meta-kim-runtime must use an absolute script path.`,
+    );
+    assert(
+      await exists(runtimeArg),
+      `${relativePath} meta-kim-runtime script path does not exist: ${runtimeArg}. meta-kim-runtime is only useful inside the Meta_Kim source repo. If this config was copied into another project, remove the meta-kim-runtime block; meta agents still load from .claude/.codex/.cursor/openclaw files.`,
+    );
+  }
 }
 
 async function validateMcpSelfTest() {

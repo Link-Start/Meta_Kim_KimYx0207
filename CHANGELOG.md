@@ -6,6 +6,145 @@ All notable changes to Meta_Kim are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 When you tag a release, add a new **`## [version] - YYYY-MM-DD`** section at the top (above older entries) and list changes there.
 
+## [2.0.30] - 2026-05-15
+
+### Changed
+
+- **Project-local MCP wiring** — `meta-kim-runtime` now renders to an absolute Meta_Kim source-repo path when synced inside this repository. Copied configs in ordinary projects no longer inherit the source-only MCP block from runtime sync.
+- **Claude plugin install spec** — Updated Everything Claude Code installation from the obsolete `ecc@everything-claude-code` spec to the current upstream `ecc@ecc` marketplace/plugin id.
+- **MCP Memory Service port policy** — Removed legacy `8888` fallback/migration guidance and standardized public docs on the upstream `8000` default.
+- **Release metadata** — Bumped package metadata and lockfile state to `2.0.30`.
+
+### Fixed
+
+- **Human-readable `meta-kim-runtime` warning** — `setup.mjs --check` and project validation now explain that `meta-kim-runtime` is a Meta_Kim source-repo helper MCP. In manually copied ordinary projects, users can remove that MCP block without affecting agent discovery from `.claude/agents/`, `.codex/agents/`, `.cursor/agents/`, or `openclaw/workspaces/`.
+- **Python MCP command selection** — MCP Memory Service registration now preserves the detected Python launcher instead of falling back to a bare `python` command on machines where that is not the working interpreter.
+- **Runtime smoke validation without local secrets** — Claude smoke validation now falls back to `.claude/agents/` when `claude agents` is advertised but unavailable, and OpenClaw smoke validation can structurally verify templates/workspaces when local `auth.json` is not configured.
+
+## [2.0.29] - 2026-05-15
+
+### Added
+
+- **Meta-theory dispatch auto-activation hook** — New `activate-meta-theory-spine.mjs` PreToolUse hook detects `Skill("meta-theory")` activation and auto-initializes spine state. When active, `enforce-agent-dispatch.mjs` blocks execution tools (Write/Edit/Bash) until agents are dispatched. Three-layer enforcement: hook (system-level) + rule files (all runtimes) + SKILL.md gate (protocol-level).
+- **DISPATCH IS MANDATORY gate in SKILL.md** — New top-level section in `canonical/skills/meta-theory/SKILL.md` with 5 hard rules: main thread is dispatcher only, >3 sentences of execution output triggers STOP, "simple task" is not an excuse, hook enforces at system level, when in doubt dispatch.
+- **CLAUDE.md dispatch hard rule** — New "Meta-Theory Dispatch is Non-Negotiable" section covering all 5 Types (A/B/C/D/E) with explicit dispatch targets per Type.
+- **AGENTS.md dispatch hard rule** — New "DISPATCH IS MANDATORY — NON-NEGOTIABLE GATE" section in Codex entry with 4 hard rules including degraded path handling when `spawn_agent` is unavailable.
+- **Codex command dispatch gate** — Updated `canonical/runtime-assets/codex/commands/meta-theory.md` with mandatory dispatch rule and blocked-reason recording.
+- **Cursor dispatch rule file** — New `.cursor/rules/meta-theory-dispatch.mdc` with alwaysApply=true, covering all 5 Types with platform-specific dispatch guidance.
+
+### Changed
+
+- **settings.json hook registration** — Added `Skill` to PreToolUse matcher, routing to `activate-meta-theory-spine.mjs` for automatic spine state initialization on meta-theory skill activation.
+
+## [2.0.28] - 2026-05-15
+
+### Added
+
+- **planning-with-files mandatory integration (Step 3.7)** — Added mandatory planning file creation at Stage 3 (Thinking) to `dev-governance.md` as Step 3.7: Planning Files Supplement. Creates `task_plan.md`, `findings.md`, `progress.md` alongside protocol artifacts (supplement, not replacement). Conductor is the sole writer. Files update after every subsequent stage. Verified compatible across Claude Code, Codex, OpenClaw, and Cursor.
+- **Fetch Step 1.5 — Global capability search** — Fetch stage now searches `capability-search-index.tsv` (1056 entries) for cross-repo agent/skill discovery before falling back to general-purpose dispatch.
+- **Fetch Step 1.6 — Skill co-discovery** — Skills are now searched alongside agents during Fetch stage, not deferred to Evolution. Discovered skills attach to `workerTaskPackets` via `recommendedSkills` field.
+- **Minimum Decomposition Rule (Step 3.6)** — Tasks involving >1 file or >1 capability dimension MUST produce >=2 `workerTaskPackets`. Single-packet plans for multi-file tasks are rejected at the Decomposition Acceptance Gate.
+- **Evolution Writeback Checklist** — 6-item mandatory checklist before marking Evolution complete: pattern recorded, governance gap closed, agent definition updated, skill association verified, canonical synced, run index updated.
+- **capabilityGapPacket (Fetch Step 5)** — When no agent match found, mandatory 3-step protocol: produce `capabilityGapPacket`, get user confirmation, record gap resolution. Silent fallback to general-purpose is now a governance violation.
+- **capability-search-index.tsv** — New grep-friendly TSV index (1056 entries, 334KB) generated by `discover-global-capabilities.mjs` for fast capability lookup across all installed agents and skills.
+- **Canonical hook source files** — `enforce-agent-dispatch.mjs`, `spine-state.mjs`, `stop-spine-cleanup.mjs` now tracked under `canonical/runtime-assets/claude/hooks/` for source control.
+
+### Changed
+
+- **SKILL.md Cross-Platform Planning** — Upgraded from 1-line mention to 5-point hard rule with explicit supplement semantics, mandatory at Stage 3, skip only for `queryBypass: true`.
+- **SKILL.md Stage table** — Stages 3–8 now include explicit `progress.md` / `findings.md` / `task_plan.md` update reminders per Step 3.7.
+- **enforce-agent-dispatch.mjs hook** — `isPlanningFile()` now checks Bash `command` strings in addition to `extractFilePath()`, allowing planning file creation via Bash during Thinking stage.
+- **discover-global-capabilities.mjs** — Refactored to extract markdown headings as search keywords; generates `capability-search-index.tsv` alongside JSON index.
+- **AGENTS.md (Codex entry)** — Added planning files mandatory paragraph in Hidden Skeleton section for Codex/Cursor/OpenClaw awareness.
+
+### Fixed
+
+- **Hook blocked planning files in Thinking stage** — `isPlanningFile()` only checked `extractFilePath()` which works for Write/Edit but not Bash tool invocations. Fixed by also checking `toolInput.command` string.
+- **dev-governance.md missing planning-with-files** — Had zero references to `planning-with-files` or planning file creation. Step 3.7 fills this gap.
+
+## [2.0.27] - 2026-05-14
+
+### Changed
+
+- **SKILL.md refactor (v3.0.0)** — Reduced `canonical/skills/meta-theory/SKILL.md` from 587 to 307 lines (48% reduction) while preserving ALL decision logic, execution steps, conditions, triggers, and boundaries. Key structural changes:
+  - Consolidated 3 duplicate dispatch sections into one unified Dispatch Rules block
+  - Added explicit Architecture Type Pre-judgment section with Meta vs Technical distinction
+  - Added DISPATCH SELF-CHECK section (>3 sentences violation threshold)
+  - Added Protocol-first Dispatch rule (runHeader, dispatchBoard, workerTaskPackets before Stage 4)
+  - Added Option Exploration (MANDATORY) requirement for Stage 3 with Decision Record
+  - Added evolutionWritebackPlan documentation
+  - Type A-E sections now explicitly name their mandatory agents (meta-prism, meta-genesis, etc.)
+  - Pushed Design Principles details to `references/meta-theory.md` (summary remains in SKILL.md)
+
+### Added
+
+- **eval-contract.md** — Verification contract at `canonical/skills/meta-theory/evals/eval-contract.md` with decision logic, execution steps, conditions/triggers, and boundaries checklists plus 5 test prompts.
+
+### Tests
+
+- All 207 setup tests pass.
+- All 782 meta-theory tests pass (initially 18 failures from missing test-expected strings, all resolved).
+- `meta:validate` 18/18 checks pass.
+
+## [2.0.26] - 2026-05-14
+
+### Added
+
+- **Measurable dispatch triggers in meta-theory SKILL.md** — The HARD DISPATCH RULE section now includes countable thresholds (3+ files read, 20+ lines of code, multi-module scope, any file modification) so the dispatcher decision is based on objective criteria instead of subjective "this looks simple" judgment. Platform-neutral wording applies to all runtimes (Claude Code, Codex, OpenClaw, Cursor).
+- **Subagent boundary enforcement in subagent-context hook** — SubagentStart hook now injects a governance rule: if a dispatched subagent detects scope growth beyond its assigned boundary, it must report back instead of self-expanding. Claude Code specific; other runtimes have equivalent mechanisms.
+- **Usage Paths table in README** — Both English and Chinese READMEs now include a clear table showing what works automatically vs. what needs explicit trigger in each runtime context (inside repo vs. other projects, Claude Code vs. Codex vs. OpenClaw vs. Cursor).
+- **Stop hook memory-save feedback** — `stop-memory-save.mjs` now writes a one-line stderr confirmation on successful save (`[meta-kim] Session memory saved (N chars, N tags)`), giving users visible evidence that the governance loop completed.
+
+### Fixed
+
+- **Global skill directory structure missing** — Running `meta:sync:global` now correctly syncs the full `meta-theory/` skill directory (not just the legacy flat `meta-theory.md`) to all four runtime homes, fixing the issue where `/meta-theory` only loaded a partial skill outside the Meta_Kim repo.
+
+### Tests
+
+- All 207 setup tests pass (including previously failing `install-plugin-bundles` test).
+- All 782 meta-theory tests pass.
+- `meta:validate` 18/18 checks pass. `meta:check:global` 10/10 all green.
+
+## [2.0.25] - 2026-05-11
+
+### Fixed
+
+- **Claude hook command portability** — Claude global and repo hook command generation now writes slash-normalized paths, preventing Windows paths such as `C:\Users\...` from being mangled when hooks are executed through bash-like shells.
+- **MCP Memory Python hook startup on Windows** — The MCP Memory hook installer now prefers explicit Python executables, skips the WindowsApps Python shim, and writes shell-portable Python hook commands.
+
+### Tests
+
+- Added setup regression coverage for slash-normalized Claude hook commands and WindowsApps Python shim avoidance.
+- Verified targeted setup tests and full project validation before release.
+
+## [2.0.24] - 2026-05-11
+
+### Fixed
+
+- **Silent MCP Memory Service boot on Windows** — Windows boot auto-start now keeps only the silent VBS launcher in Startup, moves the command wrapper under `~/.meta-kim/`, and removes the legacy visible `mcp-memory-start.cmd` from Startup during update.
+- **Cross-platform MCP Memory startup health guard** — Windows, macOS, and Linux boot launchers now poll `http://127.0.0.1:8000/api/health` after startup and show a user-visible failure notice when the service does not become healthy within 60 seconds.
+- **Localized startup failure notices** — MCP Memory boot failure messages now use setup i18n strings for English, Chinese, Japanese, and Korean instead of hard-coded English text.
+- **Release metadata drift** — Synchronized `package-lock.json` with the package version.
+
+### Tests
+
+- Added setup regression coverage for silent Windows migration, cross-platform health-checked launchers, user-visible failure notices, and i18n-backed MCP Memory startup messages.
+- Updated the valid cross-project run artifact fixture with `verifySteps` so it satisfies the current run validator contract.
+
+## [2.0.23] - 2026-05-05
+
+### Added
+
+- **Karpathy-inspired atomic execution patterns** — Absorbed four high-signal patterns from `forrestchang/andrej-karpathy-skills` into Meta_Kim's governance spine:
+  - **`verifySteps` field** in `workerTaskPacket` (workflow-contract): atomic step-level verification checklist (`[Step] → verify: [check]` format) for the Verification stage, replacing subjective "looks done" judgments.
+  - **Simplicity Push-Back Rule** in Critical stage (dev-governance): agents must state simpler alternatives before executing complex plans; self-test: "Would a senior engineer say this is overcomplicated?"
+  - **Surgical Change Hygiene** in Execution stage (dev-governance): four constraints — touch only what you must, clean up only your own mess, every changed line must trace to user request, push back when simpler approaches exist.
+  - **Agent Self-Test ("The Test" Pattern)** in Evolution stage (dev-governance): every agent's SOUL should include a concise, checkable self-test that Review and Meta-Review use as explicit verification criteria.
+
+### Changed
+
+- Updated `valid-run.json` fixture to include `verifySteps` in the sample `workerTaskPacket`.
+
 ## [2.0.22] - 2026-05-01
 
 ### Fixed
@@ -181,13 +320,12 @@ When you tag a release, add a new **`## [version] - YYYY-MM-DD`** section at the
 
 - **`scripts/claude-settings-merge.mjs` hookCommandNode double-escape (was Known Issue in Phase 1)** — `hookCommandNode(absScriptPath)` previously produced Windows paths that were double-JSON-encoded when serialized back to `settings.json` (observed as `\\\\` on disk), and the matchers `isGlobalMetaKimManagedHookCommand` / `isRepoMetaKimHookCommand` only checked the single-backslash form so they silently missed the double-escaped entries. Fixed at the source in 37d84fde: `hookCommandNode` now writes a single-escaped path and the matchers tolerate both single- and double-backslash forms. The local normalizing matcher that Phase 1 shipped inside `footprint.mjs` + `uninstall.mjs` is retained as a defense-in-depth layer for legacy on-disk settings written by older sync runs.
 
-- **MCP Memory Service default port corrected to `8000` (was `8888`)** — the upstream `doobidoo/mcp-memory-service` project defaults to `MCP_HTTP_PORT=8000` (verified against `run_server.py` and `docs/integration/multi-client.md`). Meta_Kim previously hard-coded `localhost:8888` in 10 places, so the health check in `scripts/install-mcp-memory-hooks.mjs` reported `MCP Memory Service is NOT responding` even when the server was running correctly on the official port. Updated:
+- **MCP Memory Service default port corrected to `8000`** — Meta_Kim now uses the upstream default port consistently. Updated:
   - `canonical/runtime-assets/claude/memory-hooks/mcp_memory_global.py` — `MCP_MEMORY_URL` env-var default
   - `canonical/runtime-assets/claude/memory-hooks/config.template.json` — `memoryService.http.endpoint`
   - `scripts/install-mcp-memory-hooks.mjs` — header comment, `checkServerHealth()` URL, install/check success/warn messages (5 occurrences)
   - `setup.mjs` — 4 i18n locale strings for the `mcpMemoryServerStartHint` guidance
   - `README.md`, `README.zh-CN.md`, `README.ja-JP.md`, `README.ko-KR.md` — "start server" instruction
-  Users can still override via `MCP_MEMORY_URL` env var or by editing `~/.claude/hooks/config.json`.
 
 - **`setup.mjs` `runMcpMemoryHookInstaller` i18n + progress UX** — the memory-hook installer step previously (a) printed four hard-coded English strings bypassing the per-locale `t.*` system and (b) used `stdio: "inherit"` to pipe the Python child process's raw stdout directly to the terminal, producing ~10s of silent no-feedback time and breaking the 4-language install experience. Fixed: function is now `async`, wrapped in `withProgress(t.mcpMemoryHookInstalling, …)` so users see a clean per-locale label with the existing dim arrow marker; child `stdio` is now `["ignore", "pipe", "pipe"]` so stdout is captured silently; on non-zero exit the captured `stderr` is surfaced in dim style under `t.mcpMemoryHookWarnings` so the underlying Python error is still discoverable. The single call site (`installMcpMemoryServiceStep`) now `await`s the installer. Three new i18n keys added per language (en / zh-CN / ja-JP / ko-KR): `mcpMemoryHookInstalling`, `mcpMemoryHookInstalled`, `mcpMemoryHookWarnings`.
 
@@ -204,10 +342,6 @@ When you tag a release, add a new **`## [version] - YYYY-MM-DD`** section at the
 ### Migration Notes
 
 - Users on a new machine should run `node setup.mjs` then `npm run meta:sync:global` — do **not** copy `~/.claude/settings.json` between machines (hook `command` values are absolute paths and will not resolve under a different username or OS). `npm run meta:doctor:hooks` detects and `:fix` cleans up after an accidental copy.
-
-- **MCP Memory Service port migration (`8888` → `8000`)**: existing installs have a local `~/.claude/hooks/config.json` that was seeded from the *old* template with `endpoint: "http://127.0.0.1:8888"`. That file is *preserved by design* (user customizations are never overwritten), so the template fix alone will not migrate it. Two safe paths forward:
-  1. Edit `~/.claude/hooks/config.json` manually: change `memoryService.http.endpoint` from `:8888` to `:8000`.
-  2. Or `rm ~/.claude/hooks/config.json` and re-run `node scripts/install-mcp-memory-hooks.mjs`; it will re-seed from the corrected template. Either step makes the SessionStart health check green against the stock `memory server --http` default port.
 
 - **`npx` stale-tarball cache**: if `npx --yes github:KimYx0207/Meta_Kim meta-kim` warns about missing canonical files (e.g. `openclaw.template.json`, `codex/config.toml.example`) during `sync:runtimes`, your local npx cache is holding a pre-`files`-whitelist tarball. Clear it with `npm cache clean --force` (or `rm -rf ~/.npm/_npx`) and re-run the command to pull a fresh tarball that includes the complete `canonical/` tree.
 
@@ -369,7 +503,7 @@ When you tag a release, add a new **`## [version] - YYYY-MM-DD`** section at the
 
 ## [2.0.4] - 2026-04-15
 
-- **README Layer 3 correction**: Fixed false "All three layers activate automatically" claim. Layer 1 requires Claude Code runtime, Layer 2 is auto-installed by setup.mjs, Layer 3 requires manual server startup on port 8888. All 4 languages (EN/ZH/JA/KO) synchronized.
+- **README Layer 3 correction**: Fixed false "All three layers activate automatically" claim. Layer 1 requires Claude Code runtime, Layer 2 is auto-installed by setup.mjs, Layer 3 requires manual server startup. All 4 languages (EN/ZH/JA/KO) synchronized.
 - **setup.mjs Layer 3 install**: Added Step 4.6 for MCP Memory Service (mcp-memory-service) installation — pip install, .mcp.json registration, i18n strings across all 4 languages.
 - **install-mcp-memory-hooks.mjs**: New script to install Claude Code SessionStart hooks for MCP Memory Service — verifies server health, registers hooks, warns if server not running.
 

@@ -4,6 +4,7 @@
 <p style="font-size: 1.2em; color: #7c3aed; font-weight: 600; margin-top: 0;">META_KIM</p>
 
 <p>
+  Language:
   <a href="README.md">English</a> |
   <a href="README.zh-CN.md">简体中文</a> |
   <a href="README.ja-JP.md">日本語</a> |
@@ -64,6 +65,18 @@ Recommended reading order:
 2. `AGENTS.md`
 3. `docs/runtime-capability-matrix.md`
 
+### Usage Paths
+
+After global install (`node setup.mjs` or `npx`), what works where:
+
+| Where you are | What works automatically | What needs explicit trigger |
+|---|---|---|
+| Meta_Kim repo with Claude Code | Full governance via CLAUDE.md (8-stage spine, gates, dispatch rules) | — |
+| Any other project with Claude Code | Hooks (safety, format, memory save) + `/meta-theory` skill | Say "run meta theory" or type `/meta-theory` |
+| Codex | AGENTS.md rules + 8 custom agents + `/meta-theory` command | Type "run meta theory" or `/meta-theory` |
+| OpenClaw | Workspace agents + Plugin SDK hooks (28 events) | Requires `auth.json` configured |
+| Cursor | Agent projections + skill mirrors + hooks | Lightweight; mainly read + review |
+
 ---
 
 ## Contact
@@ -73,7 +86,7 @@ Recommended reading order:
 GitHub <a href="https://github.com/KimYx0207">KimYx0207</a> |
 X <a href="https://x.com/KimYx0207">@KimYx0207</a> |
 Website <a href="https://www.aiking.dev/">aiking.dev</a> |
-WeChat Official Account: <strong>老金带你玩AI</strong>
+WeChat Official Account: <strong>Lao Jin Guides You Through AI</strong>
 
 Feishu knowledge base:
 <a href="https://my.feishu.cn/wiki/OhQ8wqntFihcI1kWVDlcNdpznFf">long-term updates</a>
@@ -641,7 +654,7 @@ For multi-platform setups, run `node setup.mjs` — it loops through all selecte
   - For **OpenClaw**: `~/.openclaw/hooks/mcp-memory-service` receives a managed hook for `command:new`, `command:reset`, `session:compact:after`, and `command:stop`.
   - For **Cursor**: `~/.cursor/hooks.json` receives `beforeSubmitPrompt` and `stop` bridges to the shared memory hook.
 - **Start server**: `npm start` in the mcp-memory-service directory (or `python -m mcp_memory_service`), then access at `http://localhost:8000`
-- **Port override**: the server honors `MCP_HTTP_PORT` (default `8000`, matching upstream); Meta_Kim reads `MCP_MEMORY_URL` in the SessionStart hook so point it at any reachable endpoint. If you are upgrading from an older Meta_Kim install that hard-coded `8888`, see the CHANGELOG's `Migration Notes` for the one-line `~/.claude/hooks/config.json` fix.
+- **Port**: the server and Meta_Kim hooks use `http://localhost:8000`.
 - **Hooks**: auto-registered for Claude Code, Codex, OpenClaw, and Cursor; each runtime uses its native hook format while sharing the same MCP Memory HTTP endpoint.
 - **Query**: `npm run meta:query:runs -- --owner <agent>` — find past runs by agent, or `npm run meta:index:runs -- <artifact>` for manual indexing of validated run artifacts
 

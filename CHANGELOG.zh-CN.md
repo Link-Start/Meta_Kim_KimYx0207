@@ -6,6 +6,145 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 发布新版本时，请在顶部（旧版本之前）添加新的 **`## [版本号] - YYYY-MM-DD`** 部分。
 
+## [2.0.30] - 2026-05-15
+
+### 变更
+
+- **项目本地 MCP 配置** — 在 Meta_Kim 源仓库内同步时，`meta-kim-runtime` 现在会渲染为绝对路径。普通项目复制配置时，不再从 runtime sync 继承这个只适合源仓库使用的 MCP。
+- **Claude 插件安装标识** — Everything Claude Code 的安装标识从过时的 `ecc@everything-claude-code` 更新为上游当前的 `ecc@ecc`。
+- **MCP Memory Service 端口策略** — 移除旧的 `8888` 回退/迁移说明，公开文档统一使用上游默认端口 `8000`。
+- **发布元数据** — `package.json` 和 `package-lock.json` 同步到 `2.0.30`。
+
+### 修复
+
+- **`meta-kim-runtime` 人话提醒** — `setup.mjs --check` 和项目校验现在会明确说明：`meta-kim-runtime` 是 Meta_Kim 源仓库里的辅助查询 MCP。普通项目手动复制配置后，如果这个 MCP 报路径错误，可以删除该 MCP block，不影响 agents 从 `.claude/agents/`、`.codex/agents/`、`.cursor/agents/` 或 `openclaw/workspaces/` 被发现。
+- **Python MCP 命令选择** — MCP Memory Service 注册现在会保留实际检测到的 Python 启动器，不再在不合适的机器上回退为裸 `python`。
+- **无本地密钥的运行时 smoke 校验** — Claude smoke 校验现在会在 `claude agents` 被声明但实际不可用时回退检查 `.claude/agents/`；OpenClaw smoke 校验在本机未配置 `auth.json` 时也能做模板/workspace 结构校验。
+
+## [2.0.29] - 2026-05-15
+
+### 新增
+
+- **Meta-theory dispatch 自动激活 hook** — 新增 `activate-meta-theory-spine.mjs` PreToolUse hook，检测 `Skill("meta-theory")` 激活时自动初始化 spine state。激活后 `enforce-agent-dispatch.mjs` 阻止执行工具（Write/Edit/Bash）直到 agents 被 dispatch。三层强制执行：hook（系统层）+ 规则文件（所有运行时）+ SKILL.md 门控（协议层）。
+- **DISPATCH IS MANDATORY 门控** — 在 `canonical/skills/meta-theory/SKILL.md` 新增顶层门控节，5 条硬规则：主线程仅做调度、>3 句执行层输出触发 STOP、"简单任务"不是借口、hook 在系统层强制、拿不准就 dispatch。
+- **CLAUDE.md dispatch 硬规则** — 新增 "Meta-Theory Dispatch is Non-Negotiable" 节，覆盖全部 5 种 Type（A/B/C/D/E），明确每种 Type 的 dispatch 目标。
+- **AGENTS.md dispatch 硬规则** — 在 Codex 入口新增 "DISPATCH IS MANDATORY — NON-NEGOTIABLE GATE" 节，4 条硬规则含 `spawn_agent` 不可用时的降级路径处理。
+- **Codex 命令 dispatch 门控** — 更新 `canonical/runtime-assets/codex/commands/meta-theory.md`，加入强制 dispatch 规则和阻塞原因记录。
+- **Cursor dispatch 规则文件** — 新增 `.cursor/rules/meta-theory-dispatch.mdc`，alwaysApply=true，覆盖全部 5 种 Type 的平台特定 dispatch 指引。
+
+### 变更
+
+- **settings.json hook 注册** — PreToolUse matcher 新增 `Skill`，指向 `activate-meta-theory-spine.mjs`，实现 meta-theory skill 激活时自动初始化 spine state。
+
+## [2.0.28] - 2026-05-15
+
+### 新增
+
+- **planning-with-files 强制集成 (Step 3.7)** — 在 `dev-governance.md` 新增 Step 3.7: Planning Files Supplement，要求在 Stage 3（Thinking）强制创建 `task_plan.md`、`findings.md`、`progress.md`，与协议产物并行（补充而非替代）。Conductor 为唯一写入者，后续每个阶段完成后更新。已验证 Claude Code、Codex、OpenClaw、Cursor 四平台兼容。
+- **Fetch Step 1.5 — 全局能力搜索** — Fetch 阶段现可搜索 `capability-search-index.tsv`（1056 条记录）进行跨仓库 agent/skill 发现，避免静默降级为通用 agent。
+- **Fetch Step 1.6 — Skill 协同发现** — Skills 现在与 agents 一同在 Fetch 阶段搜索，不再延迟到 Evolution 阶段。发现的 skills 通过 `recommendedSkills` 字段绑定到 `workerTaskPackets`。
+- **最小分解规则 (Step 3.6)** — 涉及 >1 文件或 >1 能力维度的任务必须产出 >=2 个 `workerTaskPackets`。单包分解在分解验收门被拒绝。
+- **Evolution 回写检查清单** — 6 项强制检查：模式已记录、治理缺口已关闭、agent 定义已更新、skill 关联已验证、canonical 已同步、run index 已更新。
+- **capabilityGapPacket (Fetch Step 5)** — 无匹配 agent 时，强制 3 步协议：产出 `capabilityGapPacket`、获取用户确认、记录缺口解决方案。静默降级为通用 agent 现为治理违规。
+- **capability-search-index.tsv** — 新增 grep 友好的 TSV 索引（1056 条，334KB），由 `discover-global-capabilities.mjs` 生成，支持快速跨仓库能力查询。
+- **Canonical hook 源文件** — `enforce-agent-dispatch.mjs`、`spine-state.mjs`、`stop-spine-cleanup.mjs` 现纳入 `canonical/runtime-assets/claude/hooks/` 源码管理。
+
+### 变更
+
+- **SKILL.md 跨平台规划** — 从 1 行提及升级为 5 条硬性规则，明确补充语义，Stage 3 强制执行，仅 `queryBypass: true` 时可跳过。
+- **SKILL.md 阶段表格** — Stages 3–8 增加明确的 `progress.md`/`findings.md`/`task_plan.md` 更新提示（遵循 Step 3.7）。
+- **enforce-agent-dispatch.mjs hook** — `isPlanningFile()` 现同时检查 Bash `command` 字符串和 `extractFilePath()`，允许在 Thinking 阶段通过 Bash 创建规划文件。
+- **discover-global-capabilities.mjs** — 重构为提取 markdown 标题作为搜索关键词；同时生成 `capability-search-index.tsv` 和 JSON 索引。
+- **AGENTS.md（Codex 入口）** — 在 Hidden Skeleton 章节新增规划文件强制段，提升 Codex/Cursor/OpenClaw 平台感知。
+
+### 修复
+
+- **Hook 阻止 Thinking 阶段创建规划文件** — `isPlanningFile()` 仅检查 `extractFilePath()`，对 Write/Edit 有效但对 Bash 工具无效。现同时检查 `toolInput.command` 字符串。
+- **dev-governance.md 缺失 planning-with-files 引用** — 之前零引用。Step 3.7 填补此缺口。
+
+## [2.0.27] - 2026-05-14
+
+### 变更
+
+- **SKILL.md 重构 (v3.0.0)** — 将 `canonical/skills/meta-theory/SKILL.md` 从 587 行精简至 307 行（减少 48%），同时完整保留所有决策逻辑、执行步骤、条件触发和边界。主要结构调整：
+  - 合并 3 个重复的分发区块为统一的 Dispatch Rules 模块
+  - 新增 Architecture Type Pre-judgment 区段，区分 Meta 架构与技术架构
+  - 新增 DISPATCH SELF-CHECK 区段（>3 句话越限阈值）
+  - 新增 Protocol-first Dispatch 规则（Stage 4 开始前必须产出 runHeader、dispatchBoard、workerTaskPackets）
+  - 新增 Option Exploration (MANDATORY) 要求 Stage 3 至少探索 2 条方案路径并产出 Decision Record
+  - 新增 evolutionWritebackPlan 文档
+  - Type A-E 区段显式标注各自的 mandatory agents（meta-prism、meta-genesis 等）
+  - 将 Design Principles 细节推至 `references/meta-theory.md`（SKILL.md 保留摘要）
+
+### 新增
+
+- **eval-contract.md** — 验证契约文件 `canonical/skills/meta-theory/evals/eval-contract.md`，包含决策逻辑、执行步骤、条件/触发器、边界检查清单及 5 个测试 prompt。
+
+### 测试
+
+- 全部 207 项 setup 测试通过。
+- 全部 782 项 meta-theory 测试通过（初始因缺少测试期望字符串导致 18 项失败，已全部修复）。
+- `meta:validate` 18/18 通过。
+
+## [2.0.26] - 2026-05-14
+
+### 新增
+
+- **meta-theory SKILL.md 可测量分发阈值** — HARD DISPATCH RULE 区域增加了可计数的触发标准（读取 3+ 文件、产出 20+ 行代码、跨模块范围、任何文件修改），让分发决策基于客观指标而非主观的"看着简单"判断。语言平台中立，适用于所有运行时（Claude Code、Codex、OpenClaw、Cursor）。
+- **subagent-context hook 子 agent 边界执行** — SubagentStart hook 现在注入一条治理规则：如果被派发的子 agent 发现任务范围超出其分配边界，必须上报而不是自行扩展。Claude Code 专属；其他运行时有各自的等价机制。
+- **README 使用路径表** — 中英文 README 新增清晰的使用路径对照表，显示各运行时上下文下（仓库内 vs. 其他项目、Claude Code vs. Codex vs. OpenClaw vs. Cursor）哪些能力自动生效、哪些需要显式触发。
+- **Stop hook 记忆保存反馈** — `stop-memory-save.mjs` 现在在成功保存时写一行 stderr 确认信息（`[meta-kim] Session memory saved (N chars, N tags)`），让用户可以看到治理闭环已执行。
+
+### 修复
+
+- **全局 skill 目录结构缺失** — 运行 `meta:sync:global` 现在能正确同步完整的 `meta-theory/` 目录结构（不再仅同步旧版扁平 `meta-theory.md`）到所有四个运行时主目录，修复了在 Meta_Kim 仓库外 `/meta-theory` 只能加载部分 skill 的问题。
+
+### 测试
+
+- 全部 207 项 setup 测试通过（包括之前失败的 `install-plugin-bundles` 测试）。
+- 全部 782 项 meta-theory 测试通过。
+- `meta:validate` 18/18 通过。`meta:check:global` 10/10 全绿。
+
+## [2.0.25] - 2026-05-11
+
+### 修复
+
+- **Claude hook 命令跨平台兼容性** — Claude 全局与仓库级 hook 命令生成现在统一输出正斜杠路径，避免 Windows 路径（如 `C:\Users\...`）在 bash 类 shell 执行时被转义破坏。
+- **Windows 下 MCP Memory Python hook 启动** — MCP Memory hook 安装器现在优先选择明确的 Python 可执行文件，跳过 WindowsApps 的 Python 占位 shim，并写出更稳的跨 shell Python hook 命令。
+
+### 测试
+
+- 新增 setup 回归测试，覆盖 Claude hook 正斜杠路径生成与 WindowsApps Python shim 规避。
+- 发布前已验证定向 setup 测试与完整项目校验。
+
+## [2.0.24] - 2026-05-11
+
+### 修复
+
+- **Windows 下 MCP Memory Service 静默开机启动** — Windows 开机自启现在只在 Startup 中保留静默 VBS launcher，将命令 wrapper 移到 `~/.meta-kim/`，并在更新时删除旧版会弹出终端窗口的 `mcp-memory-start.cmd`。
+- **跨平台 MCP Memory 启动健康检查** — Windows、macOS、Linux 的开机启动 wrapper 会在启动后轮询 `http://127.0.0.1:8000/api/health`，如果 60 秒内未进入 healthy 状态，就向用户显示可见失败提示。
+- **启动失败提示国际化** — MCP Memory 开机启动失败提示现在使用 setup i18n 文案，覆盖英文、中文、日文、韩文，不再硬编码英文。
+- **发布元数据漂移** — 同步 `package-lock.json` 中的包版本号。
+
+### 测试
+
+- 新增 setup 回归测试，覆盖 Windows 静默迁移、跨平台健康检查 wrapper、用户可见失败提示，以及基于 i18n 的 MCP Memory 启动提示文案。
+- 更新有效 cross-project run artifact fixture，补齐 `verifySteps`，使其符合当前 run validator 合约。
+
+## [2.0.23] - 2026-05-05
+
+### 新增
+
+- **吸收 Karpathy 原子级执行模式** — 从 `forrestchang/andrej-karpathy-skills` 项目中提取四个高信号模式，融入 Meta_Kim 治理骨架：
+  - **`verifySteps` 字段** 加入 `workerTaskPacket`（workflow-contract）：原子级步骤验证清单（`[步骤] → verify: [检查条件]` 格式），用于 Verification 阶段逐条检查，取代主观的"看着做完了"判断。
+  - **简洁性 Push-Back 规则** 加入 Critical 阶段（dev-governance）：agent 在执行复杂方案前必须主动提出更简单的替代方案；自检标准："资深工程师会说太复杂吗？"
+  - **精准变更卫生约束** 加入 Execution 阶段（dev-governance）：四条约束 — 只改该改的、只清理自己造成的孤立代码、每行变更必须可追溯到用户需求、存在更简方案时主动 push back。
+  - **Agent 自检模式（"The Test" 模式）** 加入 Evolution 阶段（dev-governance）：每个 agent 的 SOUL 应包含简洁可检查的自检声明，Review 和 Meta-Review 阶段将其作为显式验证标准。
+
+### 变更
+
+- 更新 `valid-run.json` fixture，在示例 `workerTaskPacket` 中加入 `verifySteps` 字段。
+
 ## [2.0.22] - 2026-05-01
 
 ### 修复
@@ -174,7 +313,7 @@
 ### 修复
 
 - **`scripts/claude-settings-merge.mjs` hookCommandNode 双转义问题** — Windows 路径双重 JSON 编码问题已修复。
-- **MCP Memory Service 默认端口修正为 `8000`**（原为 `8888`）。更新了 `mcp_memory_global.py`、`config.template.json`、`install-mcp-memory-hooks.mjs`、`setup.mjs` 和所有4个 README 文件。
+- **MCP Memory Service 默认端口修正为 `8000`**。更新了 `mcp_memory_global.py`、`config.template.json`、`install-mcp-memory-hooks.mjs`、`setup.mjs` 和所有4个 README 文件。
 - **`setup.mjs` `runMcpMemoryHookInstaller` i18n + 进度 UX** — 内存 hook 安装步骤的国际化修复。
 - **`scripts/install-mcp-memory-hooks.mjs` 控制台输出左对齐** — 移除了多余的缩进。
 - **`scripts/sync-runtimes.mjs` 缺少 canonical 警告国际化** — 新增 en / zh-CN / ja-JP / ko-KR 翻译。
@@ -184,7 +323,7 @@
 ### 新增
 
 - **Third-party Dependencies README 章节**：所有4个 README（EN/zh-CN/ja-JP/ko-KR）新增第三方依赖章节，在 License 之前。
-- **MCP Memory Service 默认端口修正**：从 `8888` 改为官方 `8000`。
+- **MCP Memory Service 默认端口修正**：统一为官方 `8000`。
 
 ### 修复
 

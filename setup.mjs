@@ -28,7 +28,7 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import { join, dirname, resolve } from "node:path";
+import { join, dirname, resolve, isAbsolute } from "node:path";
 import { homedir, platform, tmpdir } from "node:os";
 import { createInterface } from "node:readline";
 import {
@@ -74,6 +74,16 @@ const args = process.argv.slice(2);
 const updateMode = args.includes("--update") || args.includes("-u");
 const checkOnly = args.includes("--check");
 const silentMode = args.includes("--silent") || !process.stdout.isTTY;
+
+function writeUtf8BomFileSync(path, content) {
+  writeFileSync(
+    path,
+    Buffer.concat([
+      Buffer.from([0xef, 0xbb, 0xbf]),
+      Buffer.from(content, "utf8"),
+    ]),
+  );
+}
 
 /** Interactive extras (default off): full install uses scope "both" and skips proxy prompts. */
 const promptInstallScope =
@@ -388,6 +398,8 @@ ${r ? `Raw error: ${r}` : ""}
     syncCursorAgents: (n) => `Cursor agents: ${n}/8 .md files`,
     syncCursorSkills: "Cursor skills/meta-theory/SKILL.md",
     syncCursorMcp: "Cursor .cursor/mcp.json",
+    mcpRuntimeProjectOnly: (p) =>
+      `${p} contains meta-kim-runtime, but its script path is not usable here. This MCP is only for the Meta_Kim source repo; remove the meta-kim-runtime block in copied projects. Agents still load from .claude/.codex/.cursor/openclaw files.`,
     syncOk: "All sync targets verified",
     syncMissing: (p) => `Missing: ${p}`,
     syncPartial: (label, got, need) => `${label}: got ${got}, need ${need}`,
@@ -471,6 +483,9 @@ Possible causes:
     mcpMemoryAutoStartFailed: "Auto-start failed — start manually:",
     mcpMemoryAutoStartManual: "  memory server --http",
     mcpMemoryAutoStartBoot: "Boot auto-start configured",
+    mcpMemoryAutoStartFailureTitle: "Meta_Kim MCP Memory Service",
+    mcpMemoryAutoStartFailureMessage:
+      "Meta_Kim MCP Memory Service failed to start or did not become healthy at http://127.0.0.1:8000. Cross-session memory may be unavailable. Please start it manually: python -m mcp_memory_service",
     updateHeading: "Update Mode",
     updateNpm: "Reinstalling npm dependencies...",
     updateSkills: "Updating all skills...",
@@ -839,6 +854,8 @@ ${r ? `原始错误：${r}` : ""}
     syncCursorAgents: (n) => `Cursor 智能体: ${n}/8 .md 文件`,
     syncCursorSkills: "Cursor 技能/meta-theory/SKILL.md",
     syncCursorMcp: "Cursor .cursor/mcp.json",
+    mcpRuntimeProjectOnly: (p) =>
+      `${p} 包含 meta-kim-runtime，但这里的脚本路径不可用。这个 MCP 只给 Meta_Kim 源仓库使用；复制到普通项目时请删除 meta-kim-runtime 这一块。Agent 仍会从 .claude/.codex/.cursor/openclaw 文件加载。`,
     syncOk: "所有同步目标验证通过",
     syncMissing: (p) => `缺失：${p}`,
     syncPartial: (label, got, need) => `${label}：实际 ${got}，需要 ${need}`,
@@ -916,6 +933,9 @@ ${r ? `原始错误：${r}` : ""}
     mcpMemoryAutoStartFailed: "自动启动失败——请手动启动：",
     mcpMemoryAutoStartManual: "  memory server --http",
     mcpMemoryAutoStartBoot: "已配置开机自启",
+    mcpMemoryAutoStartFailureTitle: "Meta_Kim MCP Memory Service",
+    mcpMemoryAutoStartFailureMessage:
+      "Meta_Kim MCP Memory Service 启动失败，或未在 http://127.0.0.1:8000 变为 healthy。跨会话记忆可能不可用。请手动启动：python -m mcp_memory_service",
     updateHeading: "更新模式",
     updateNpm: "正在重新安装 npm 依赖...",
     updateSkills: "正在更新所有技能...",
@@ -1292,6 +1312,8 @@ ${r ? `生エラー：${r}` : ""}
     syncCursorAgents: (n) => `Cursor エージェント: ${n}/8 .md ファイル`,
     syncCursorSkills: "Cursor スキル/meta-theory/SKILL.md",
     syncCursorMcp: "Cursor .cursor/mcp.json",
+    mcpRuntimeProjectOnly: (p) =>
+      `${p} に meta-kim-runtime がありますが、この場所ではスクリプトパスを使用できません。この MCP は Meta_Kim ソースリポジトリ専用です。コピー先プロジェクトでは meta-kim-runtime ブロックを削除してください。Agents は .claude/.codex/.cursor/openclaw ファイルから引き続き読み込まれます。`,
     syncOk: "すべての同期ターゲット検証済み",
     syncMissing: (p) => `不足：${p}`,
     syncPartial: (label, got, need) => `${label}：実際 ${got}、必要 ${need}`,
@@ -1381,6 +1403,9 @@ ${r ? `生エラー：${r}` : ""}
     mcpMemoryAutoStartFailed: "自動起動に失敗——手動で起動してください：",
     mcpMemoryAutoStartManual: "  memory server --http",
     mcpMemoryAutoStartBoot: "起動時自動開始を設定しました",
+    mcpMemoryAutoStartFailureTitle: "Meta_Kim MCP Memory Service",
+    mcpMemoryAutoStartFailureMessage:
+      "Meta_Kim MCP Memory Service の起動に失敗したか、http://127.0.0.1:8000 が healthy になりませんでした。クロスセッションメモリが利用できない可能性があります。手動で起動してください: python -m mcp_memory_service",
     updateHeading: "アップデートモード",
     updateNpm: "npm依存関係を再インストール中...",
     updateSkills: "すべてのスキルを更新中...",
@@ -1761,6 +1786,8 @@ ${r ? `원본 오류：${r}` : ""}
     syncCursorAgents: (n) => `Cursor 에이전트: ${n}/8 .md 파일`,
     syncCursorSkills: "Cursor 스킬/meta-theory/SKILL.md",
     syncCursorMcp: "Cursor .cursor/mcp.json",
+    mcpRuntimeProjectOnly: (p) =>
+      `${p}에 meta-kim-runtime이 있지만 이 위치에서는 스크립트 경로를 사용할 수 없습니다. 이 MCP는 Meta_Kim 소스 저장소 전용입니다. 복사한 일반 프로젝트에서는 meta-kim-runtime 블록을 삭제하세요. Agents는 계속 .claude/.codex/.cursor/openclaw 파일에서 로드됩니다.`,
     syncOk: "모든 동기화 대상 확인 완료",
     syncMissing: (p) => `누락: ${p}`,
     syncPartial: (label, got, need) => `${label}: 실제 ${got}, 필요 ${need}`,
@@ -1844,6 +1871,9 @@ ${r ? `원본 오류：${r}` : ""}
     mcpMemoryAutoStartFailed: "자동 시작 실패 — 수동으로 시작하세요:",
     mcpMemoryAutoStartManual: "  memory server --http",
     mcpMemoryAutoStartBoot: "부팅 시 자동 시작 구성 완료",
+    mcpMemoryAutoStartFailureTitle: "Meta_Kim MCP Memory Service",
+    mcpMemoryAutoStartFailureMessage:
+      "Meta_Kim MCP Memory Service를 시작하지 못했거나 http://127.0.0.1:8000 이 healthy 상태가 되지 않았습니다. 세션 간 메모리를 사용할 수 없을 수 있습니다. 수동으로 시작하세요: python -m mcp_memory_service",
     updateHeading: "업데이트 모드",
     updateNpm: "npm 의존성 재설치 중...",
     updateSkills: "모든 스킬 업데이트 중...",
@@ -2920,6 +2950,30 @@ function openclawWorkspaceMdComplete(wsPath) {
   return OPENCLAW_WORKSPACE_MD.every((name) => existsSync(join(wsPath, name)));
 }
 
+function metaKimRuntimeNotice(mcpPath) {
+  if (!existsSync(mcpPath)) return null;
+  try {
+    const config = JSON.parse(readFileSync(mcpPath, "utf8"));
+    const server = config.mcpServers?.["meta-kim-runtime"];
+    if (!server) return null;
+    const scriptPath = server.args?.[0];
+    if (!scriptPath) return t.mcpRuntimeProjectOnly(mcpPath);
+    if (
+      scriptPath.includes("__REPO_ROOT__") ||
+      scriptPath.includes("REPLACE_WITH_REPO_ROOT")
+    ) {
+      return t.mcpRuntimeProjectOnly(mcpPath);
+    }
+    const resolvedScript = isAbsolute(scriptPath)
+      ? scriptPath
+      : join(PROJECT_DIR, scriptPath);
+    if (!existsSync(resolvedScript)) return t.mcpRuntimeProjectOnly(mcpPath);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function checkSync(
   runtimes,
   repoTargets = ["claude", "codex", "openclaw", "cursor"],
@@ -2986,8 +3040,12 @@ function checkSync(
       allOk = false;
     }
 
-    if (existsSync(join(PROJECT_DIR, ".mcp.json"))) ok(t.syncClaudeMcp);
-    else {
+    const claudeMcp = join(PROJECT_DIR, ".mcp.json");
+    if (existsSync(claudeMcp)) {
+      ok(t.syncClaudeMcp);
+      const notice = metaKimRuntimeNotice(claudeMcp);
+      if (notice) warn(notice);
+    } else {
       warn(t.syncMissing(".mcp.json"));
       allOk = false;
     }
@@ -3106,8 +3164,11 @@ function checkSync(
     }
 
     const cursorMcp = join(PROJECT_DIR, ".cursor", "mcp.json");
-    if (existsSync(cursorMcp)) ok(t.syncCursorMcp);
-    else {
+    if (existsSync(cursorMcp)) {
+      ok(t.syncCursorMcp);
+      const notice = metaKimRuntimeNotice(cursorMcp);
+      if (notice) warn(notice);
+    } else {
       warn(t.syncMissing(".cursor/mcp.json"));
       allOk = false;
     }
@@ -4016,7 +4077,12 @@ async function startMcpMemoryServiceBackground(resolved) {
   }
 
   info(t.mcpMemoryAutoStarting);
-  const env = { ...process.env, MCP_ALLOW_ANONYMOUS_ACCESS: "true" };
+  const env = {
+    ...process.env,
+    MCP_ALLOW_ANONYMOUS_ACCESS: "true",
+    HF_HUB_OFFLINE: "1",
+    TRANSFORMERS_OFFLINE: "1",
+  };
 
   try {
     const child = spawn(memoryBin, ["server", "--http"], {
@@ -4077,6 +4143,10 @@ async function startMcpMemoryServiceBackground(resolved) {
 
 function configureBootAutoStart(memoryBin) {
   const plat = platform();
+  const shellQuote = (value) => `'${String(value).replace(/'/g, `'\\''`)}'`;
+  const psSingleQuote = (value) => `'${String(value).replace(/'/g, "''")}'`;
+  const failureTitle = t.mcpMemoryAutoStartFailureTitle;
+  const failureMessage = t.mcpMemoryAutoStartFailureMessage;
   try {
     if (plat === "win32") {
       const startupDir = join(
@@ -4090,11 +4160,49 @@ function configureBootAutoStart(memoryBin) {
         "Startup",
       );
       if (!existsSync(startupDir)) return false;
-      const cmdPath = join(startupDir, "mcp-memory-start.cmd");
+      const metaKimDir = join(homedir(), ".meta-kim");
+      mkdirSync(metaKimDir, { recursive: true });
+      const psPath = join(metaKimDir, "mcp-memory-start.ps1");
+      const cmdPath = join(metaKimDir, "mcp-memory-start.cmd");
       const vbsPath = join(startupDir, "mcp-memory-silent.vbs");
+      const legacyCmdPath = join(startupDir, "mcp-memory-start.cmd");
+      if (existsSync(legacyCmdPath)) rmSync(legacyCmdPath, { force: true });
+      const escapedMemoryBin = memoryBin.replace(/'/g, "''");
+      writeUtf8BomFileSync(
+        psPath,
+        `$ErrorActionPreference = "SilentlyContinue"\r\n` +
+          `$env:MCP_ALLOW_ANONYMOUS_ACCESS = "true"\r\n` +
+          `$env:HF_HUB_OFFLINE = "1"\r\n` +
+          `$env:TRANSFORMERS_OFFLINE = "1"\r\n` +
+          `$memoryBin = '${escapedMemoryBin}'\r\n` +
+          `$failureTitle = ${psSingleQuote(failureTitle)}\r\n` +
+          `$failureMessage = ${psSingleQuote(failureMessage)}\r\n` +
+          `$logDir = Join-Path $env:USERPROFILE ".meta-kim"\r\n` +
+          `$stdoutLog = Join-Path $logDir "mcp-memory.out.log"\r\n` +
+          `$stderrLog = Join-Path $logDir "mcp-memory.err.log"\r\n` +
+          `function Test-MetaKimMemoryHealth {\r\n` +
+          `  try {\r\n` +
+          `    $response = Invoke-WebRequest -Uri "http://127.0.0.1:8000/api/health" -UseBasicParsing -TimeoutSec 3\r\n` +
+          `    return ($response.Content -match "healthy")\r\n` +
+          `  } catch { return $false }\r\n` +
+          `}\r\n` +
+          `if (Test-MetaKimMemoryHealth) { exit 0 }\r\n` +
+          `try {\r\n` +
+          `  Start-Process -FilePath $memoryBin -ArgumentList @("server", "--http") -WindowStyle Hidden -RedirectStandardOutput $stdoutLog -RedirectStandardError $stderrLog\r\n` +
+          `} catch {}\r\n` +
+          `$healthy = $false\r\n` +
+          `for ($i = 0; $i -lt 150; $i++) {\r\n` +
+          `  Start-Sleep -Seconds 2\r\n` +
+          `  if (Test-MetaKimMemoryHealth) { $healthy = $true; break }\r\n` +
+          `}\r\n` +
+          `if (-not $healthy) {\r\n` +
+          `  Add-Type -AssemblyName PresentationFramework\r\n` +
+          `  [System.Windows.MessageBox]::Show($failureMessage, $failureTitle, "OK", "Warning") | Out-Null\r\n` +
+          `}\r\n`,
+      );
       writeFileSync(
         cmdPath,
-        `@echo off\r\nset MCP_ALLOW_ANONYMOUS_ACCESS=true\r\n"${memoryBin}" server --http\r\n`,
+        `@echo off\r\npowershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "${psPath}"\r\n`,
       );
       writeFileSync(
         vbsPath,
@@ -4105,8 +4213,38 @@ function configureBootAutoStart(memoryBin) {
     if (plat === "darwin") {
       const launchDir = join(homedir(), "Library", "LaunchAgents");
       mkdirSync(launchDir, { recursive: true });
-      const logPath = join(homedir(), ".meta-kim", "mcp-memory.log");
-      mkdirSync(join(homedir(), ".meta-kim"), { recursive: true });
+      const metaKimDir = join(homedir(), ".meta-kim");
+      mkdirSync(metaKimDir, { recursive: true });
+      const logPath = join(metaKimDir, "mcp-memory.log");
+      const scriptPath = join(metaKimDir, "mcp-memory-start.sh");
+      writeFileSync(
+        scriptPath,
+        `#!/bin/sh\n` +
+          `export MCP_ALLOW_ANONYMOUS_ACCESS=true\n` +
+          `export HF_HUB_OFFLINE=1\n` +
+          `export TRANSFORMERS_OFFLINE=1\n` +
+          `MEMORY_BIN=${shellQuote(memoryBin)}\n` +
+          `LOG_PATH=${shellQuote(logPath)}\n` +
+          `TITLE=${shellQuote(failureTitle)}\n` +
+          `MSG=${shellQuote(failureMessage)}\n` +
+          `check_health() {\n` +
+          `  command -v curl >/dev/null 2>&1 && curl -fsS --max-time 3 http://127.0.0.1:8000/api/health 2>/dev/null | grep -q healthy\n` +
+          `}\n` +
+          `notify_failure() {\n` +
+          `  osascript -e "display dialog \\"$MSG\\" with title \\"$TITLE\\" buttons {\\"OK\\"} with icon caution" >/dev/null 2>&1 || true\n` +
+          `}\n` +
+          `check_health && exit 0\n` +
+          `"$MEMORY_BIN" server --http >>"$LOG_PATH" 2>&1 &\n` +
+          `healthy=0\n` +
+          `i=0\n` +
+          `while [ "$i" -lt 150 ]; do\n` +
+          `  sleep 2\n` +
+          `  if check_health; then healthy=1; break; fi\n` +
+          `  i=$((i + 1))\n` +
+          `done\n` +
+          `[ "$healthy" -eq 1 ] || notify_failure\n`,
+        { mode: 0o755 },
+      );
       writeFileSync(
         join(launchDir, "com.meta-kim.mcp-memory-service.plist"),
         `<?xml version="1.0" encoding="UTF-8"?>
@@ -4114,10 +4252,12 @@ function configureBootAutoStart(memoryBin) {
 <plist version="1.0"><dict>
   <key>Label</key><string>com.meta-kim.mcp-memory-service</string>
   <key>ProgramArguments</key><array>
-    <string>${memoryBin}</string><string>server</string><string>--http</string>
+    <string>/bin/sh</string><string>${scriptPath}</string>
   </array>
   <key>EnvironmentVariables</key><dict>
     <key>MCP_ALLOW_ANONYMOUS_ACCESS</key><string>true</string>
+    <key>HF_HUB_OFFLINE</key><string>1</string>
+    <key>TRANSFORMERS_OFFLINE</key><string>1</string>
   </dict>
   <key>RunAtLoad</key><true/>
   <key>StandardOutPath</key><string>${logPath}</string>
@@ -4128,10 +4268,46 @@ function configureBootAutoStart(memoryBin) {
     }
     // Linux: XDG autostart
     const autoDir = join(homedir(), ".config", "autostart");
+    const metaKimDir = join(homedir(), ".meta-kim");
     mkdirSync(autoDir, { recursive: true });
+    mkdirSync(metaKimDir, { recursive: true });
+    const logPath = join(metaKimDir, "mcp-memory.log");
+    const scriptPath = join(metaKimDir, "mcp-memory-start.sh");
+    writeFileSync(
+      scriptPath,
+      `#!/bin/sh\n` +
+        `export MCP_ALLOW_ANONYMOUS_ACCESS=true\n` +
+        `export HF_HUB_OFFLINE=1\n` +
+        `export TRANSFORMERS_OFFLINE=1\n` +
+        `MEMORY_BIN=${shellQuote(memoryBin)}\n` +
+        `LOG_PATH=${shellQuote(logPath)}\n` +
+        `TITLE=${shellQuote(failureTitle)}\n` +
+        `MSG=${shellQuote(failureMessage)}\n` +
+        `check_health() {\n` +
+        `  command -v curl >/dev/null 2>&1 && curl -fsS --max-time 3 http://127.0.0.1:8000/api/health 2>/dev/null | grep -q healthy\n` +
+        `}\n` +
+        `notify_failure() {\n` +
+        `  if command -v notify-send >/dev/null 2>&1; then notify-send "$TITLE" "$MSG"; return; fi\n` +
+        `  if command -v zenity >/dev/null 2>&1; then zenity --warning --title="$TITLE" --text="$MSG"; return; fi\n` +
+        `  if command -v kdialog >/dev/null 2>&1; then kdialog --sorry "$MSG" --title "$TITLE"; return; fi\n` +
+        `  if command -v xmessage >/dev/null 2>&1; then xmessage -center "$MSG"; return; fi\n` +
+        `  printf '%s\\n' "$MSG" >>"$LOG_PATH"\n` +
+        `}\n` +
+        `check_health && exit 0\n` +
+        `"$MEMORY_BIN" server --http >>"$LOG_PATH" 2>&1 &\n` +
+        `healthy=0\n` +
+        `i=0\n` +
+        `while [ "$i" -lt 150 ]; do\n` +
+        `  sleep 2\n` +
+        `  if check_health; then healthy=1; break; fi\n` +
+        `  i=$((i + 1))\n` +
+        `done\n` +
+        `[ "$healthy" -eq 1 ] || notify_failure\n`,
+      { mode: 0o755 },
+    );
     writeFileSync(
       join(autoDir, "mcp-memory-service.desktop"),
-      `[Desktop Entry]\nType=Application\nName=MCP Memory Service\nExec=env MCP_ALLOW_ANONYMOUS_ACCESS=true "${memoryBin}" server --http\nNoDisplay=true\n`,
+      `[Desktop Entry]\nType=Application\nName=MCP Memory Service\nExec=/bin/sh "${scriptPath}"\nNoDisplay=true\n`,
     );
     return true;
   } catch {
@@ -4220,15 +4396,10 @@ async function installMcpMemoryServiceStep(inUpdateMode = false) {
   // Register in project .mcp.json. When running inside a venv we write the
   // absolute python path so Claude Code can launch it without shell PATH setup.
   // `python` here is a launcher descriptor { command, args, version, ... }.
-  const memoryServerConfig = resolved.venvCreated
-    ? {
-        command: python.command,
-        args: [...python.args, "-m", "mcp_memory_service"],
-      }
-    : {
-        command: "python",
-        args: ["-m", "mcp_memory_service"],
-      };
+  const memoryServerConfig = {
+    command: python.command,
+    args: [...python.args, "-m", "mcp_memory_service"],
+  };
 
   const mcpPath = join(PROJECT_DIR, ".mcp.json");
   if (existsSync(mcpPath)) {
