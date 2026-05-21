@@ -10,7 +10,7 @@ If you only keep five rules in mind:
 - `meta-warden` is the normal public front door. Other meta agents are backstage specialists.
 - Dispatch is capability-first: describe the capability, search agents / skills / tools / capability indexes, then choose the best owner.
 - Long-term behavior lives in `canonical/`, `config/contracts/`, and `config/capability-index/`. Runtime trees are projections unless explicitly documented otherwise.
-- User-visible worker names must be short business role names such as `前端`, `后端-登录`, `测试-安装`, `frontend`, or `backend-login`, not host-generated personal nicknames.
+- User-visible worker names must be coarse business role-family names such as `前端`, `后端`, `测试`, `frontend`, `backend`, or `test`, not scoped work items or host-generated personal nicknames.
 
 ## Codex Output Rules
 
@@ -156,15 +156,15 @@ Not every task needs every lane, but omitted lanes should be intentional. The bu
 Separate these three names:
 
 - `ownerAgent`: the real governance or execution owner, for example `meta-conductor` or `frontend-developer`
-- `roleDisplayName`: the short user-visible business role, for example `前端`, `后端-登录`, `测试-安装`, `frontend`, or `db-schema`
+- `roleDisplayName`: the short user-visible business role family, for example `前端`, `后端`, `测试`, `frontend`, `backend`, or `test`
 - `runtimeInstanceAlias`: the host runtime's incidental nickname, if any
 
 Rules:
 
 - Do not show host-generated personal names as the primary agent name.
 - Prefer short role names over long task descriptions.
-- Use role-scope names only when one role has multiple parallel shards, for example `前端-首页` and `前端-设置`.
-- If the same owner runs multiple parallel instances, record `roleInstanceId`, `parallelGroup`, `dependsOn`, `mergeOwner`, and collision boundaries.
+- Do not put concrete work items into `roleDisplayName`; put shard or task scope in `roleInstanceId`, `shardScope`, `parallelGroup`, `dependsOn`, `mergeOwner`, and collision boundaries.
+- If the same owner runs multiple parallel instances, keep the same coarse `roleDisplayName` and separate instances with `roleInstanceId`.
 
 ## Eight-Stage Spine
 
@@ -262,6 +262,7 @@ Rules:
 - If `graphify-out/wiki/index.md` exists, use it for broad navigation instead of raw source browsing.
 - Use graph queries or subgraph extraction when available for focused relationships.
 - Dirty `graphify-out/` files can be expected after hooks or incremental updates; dirty graph files are not a reason to skip graph context.
+- `npm run meta:graphify:check` and `npm run meta:validate` compare the graph's built commit with current `git rev-parse HEAD` and fail when `GRAPH_REPORT.md` is stale.
 - After modifying code files, run `npm run meta:graphify:rebuild` to keep the graph current across Windows, macOS, and Linux.
 
 ## Maintenance Loop
