@@ -93,6 +93,8 @@ const EXPECTED_PUBLIC_DISPLAY_REQUIRES = [
 
 /** Documented in AGENTS.md / CLAUDE.md — project hook commands (Stop may list multiple). */
 const EXPECTED_CLAUDE_HOOK_COMMANDS = [
+  "node .claude/hooks/meta-kim-memory-save.mjs --event session-start",
+  "node .claude/hooks/meta-kim-memory-save.mjs --event user-prompt",
   "node .claude/hooks/activate-meta-theory-spine.mjs",
   "node .claude/hooks/block-dangerous-bash.mjs",
   "node .claude/hooks/pre-git-push-confirm.mjs",
@@ -697,8 +699,8 @@ async function validateWorkflowContract() {
   );
   assert(
     userLanguagePolicy?.userFacingTextLanguageSource ===
-      "latest_user_message_or_explicit_preference",
-    "workflow-contract.json userLanguagePolicy must follow latest user language or explicit preference.",
+      "runtime_tool_selected_output_language_else_explicit_output_language_choice_else_latest_user_input_language",
+    "workflow-contract.json userLanguagePolicy must follow runtime/tool selected output language first, explicit output-language choice second, then latest user input language.",
   );
   assert(
     typeof userLanguagePolicy?.fallbackLocale === "string" &&
@@ -1273,6 +1275,9 @@ async function validateWorkflowContract() {
     "ownerResponsibilityDelta",
     "agentIterationPlan",
     "ownerResolution",
+    "matchedSkills",
+    "skillSelectionScope",
+    "governanceStageNodes",
   ]) {
     assert(
       agentBlueprintProtocol.roleRequiredFields?.includes(field),
@@ -1295,8 +1300,12 @@ async function validateWorkflowContract() {
     longTermCapabilityPolicy.abstractCapabilitySlotsRequired === true &&
       longTermCapabilityPolicy.forbidConcreteSkillInLongTermAgentIdentity ===
         true &&
-      longTermCapabilityPolicy.selectedSkillScope === "run_only",
-    "workflow-contract.json agentBlueprintPacket.longTermCapabilityPolicy must require abstract slots, run-only concrete skill selection, and no fixed concrete child skills in long-term identity.",
+      longTermCapabilityPolicy.selectedSkillScope === "run_only" &&
+      longTermCapabilityPolicy.openSourceProjectKeepsGovernanceMetaAgentsOnly ===
+        true &&
+      longTermCapabilityPolicy.nonGovernanceExecutionAgentsIgnoredInPublicRepo ===
+        true,
+    "workflow-contract.json agentBlueprintPacket.longTermCapabilityPolicy must require abstract slots, run-only concrete skill selection, open-source governance-only owners, and no fixed concrete child skills in long-term identity.",
   );
   for (const provider of [
     "agent-teams-playbook",
@@ -1343,12 +1352,48 @@ async function validateWorkflowContract() {
   );
   for (const resolution of ["upgrade_existing_owner", "create_owner_first"]) {
     assert(
-      contract.runDiscipline?.protocolFirst?.executionAgentCardRequiredWhenOwnerResolutionAnyOf?.includes(
+      contract.runDiscipline?.protocolFirst?.governanceOwnerDecisionRequiredWhenOwnerResolutionAnyOf?.includes(
         resolution,
       ),
-      `workflow-contract.json executionAgentCardRequiredWhenOwnerResolutionAnyOf must include ${resolution}.`,
+      `workflow-contract.json governanceOwnerDecisionRequiredWhenOwnerResolutionAnyOf must include ${resolution}.`,
     );
   }
+
+  const governanceStagePolicy =
+    agentBlueprintProtocol.governanceStageCoveragePolicy ?? {};
+  for (const stage of ["Critical", "Fetch", "Thinking", "Review"]) {
+    assert(
+      governanceStagePolicy.requiredStages?.includes(stage),
+      `workflow-contract.json governanceStageCoveragePolicy.requiredStages must include ${stage}.`,
+    );
+    assert(
+      Array.isArray(governanceStagePolicy.stageAllowedAgents?.[stage]) &&
+        governanceStagePolicy.stageAllowedAgents[stage].every((agent) =>
+          governanceStagePolicy.allowedOwnerAgents?.includes(agent),
+        ),
+      `workflow-contract.json governanceStageCoveragePolicy.stageAllowedAgents.${stage} must contain only allowed governance meta agents.`,
+    );
+  }
+  for (const agentId of [
+    "meta-warden",
+    "meta-conductor",
+    "meta-genesis",
+    "meta-artisan",
+    "meta-sentinel",
+    "meta-librarian",
+    "meta-prism",
+    "meta-scout",
+    "meta-chrysalis",
+  ]) {
+    assert(
+      governanceStagePolicy.allowedOwnerAgents?.includes(agentId),
+      `workflow-contract.json governanceStageCoveragePolicy.allowedOwnerAgents must include ${agentId}.`,
+    );
+  }
+  assert(
+    governanceStagePolicy.skillSelectionScope === "run_scoped",
+    "workflow-contract.json governanceStageCoveragePolicy.skillSelectionScope must be run_scoped.",
+  );
 
   const sameOwnerPolicy =
     contract.protocols?.workerTaskPacket?.sameOwnerMultiInstancePolicy ?? {};
@@ -2002,6 +2047,13 @@ async function validateRunArtifactFixtures() {
     "run-artifacts",
     "invalid-run-public-ready.json",
   );
+  const invalidNonMetaOwnerFixture = path.join(
+    repoRoot,
+    "tests",
+    "fixtures",
+    "run-artifacts",
+    "invalid-run-non-meta-owner.json",
+  );
 
   await execFileAsync(
     "node",
@@ -2030,6 +2082,26 @@ async function validateRunArtifactFixtures() {
   assert(
     invalidPassed === false,
     "scripts/validate-run-artifact.mjs must reject the invalid public-ready fixture.",
+  );
+
+  let invalidNonMetaOwnerPassed = false;
+  try {
+    await execFileAsync(
+      "node",
+      ["scripts/validate-run-artifact.mjs", invalidNonMetaOwnerFixture],
+      {
+        cwd: repoRoot,
+        timeout: 30_000,
+      },
+    );
+    invalidNonMetaOwnerPassed = true;
+  } catch {
+    invalidNonMetaOwnerPassed = false;
+  }
+
+  assert(
+    invalidNonMetaOwnerPassed === false,
+    "scripts/validate-run-artifact.mjs must reject non-meta ownerAgent in public Meta_Kim fixtures.",
   );
 }
 
@@ -2312,6 +2384,9 @@ async function validateCodexArtifacts() {
   for (const expected of [
     "approval_policy",
     "sandbox_mode",
+    "suppress_unstable_features_warning = true",
+    "[features]",
+    "default_mode_request_user_input = true",
     "[agents]",
     "[mcp_servers.meta_kim_runtime]",
     ".codex/skills/",
@@ -2503,6 +2578,14 @@ async function validateClaudeSettings() {
     "canonical Claude settings are missing PreToolUse hooks.",
   );
   assert(
+    hooks?.SessionStart?.length >= 1,
+    "canonical Claude settings are missing SessionStart hooks.",
+  );
+  assert(
+    hooks?.UserPromptSubmit?.length >= 1,
+    "canonical Claude settings are missing UserPromptSubmit hooks.",
+  );
+  assert(
     hooks?.PostToolUse?.length >= 1,
     "canonical Claude settings are missing PostToolUse hooks.",
   );
@@ -2515,6 +2598,14 @@ async function validateClaudeSettings() {
     "canonical Claude settings are missing Stop hooks.",
   );
 
+  assert(
+    hooks.SessionStart[0]?.matcher === "startup|resume",
+    "canonical Claude settings SessionStart must target startup|resume.",
+  );
+  assert(
+    hooks.UserPromptSubmit[0]?.hooks?.length >= 1,
+    "canonical Claude settings UserPromptSubmit must include memory recall hooks.",
+  );
   assert(
     hooks.PreToolUse[0]?.matcher === "Bash",
     "canonical Claude settings PreToolUse[0] must target Bash.",

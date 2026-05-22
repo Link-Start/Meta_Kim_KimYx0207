@@ -21,7 +21,7 @@ trigger: "Capability gaps, external tool needs, when installed skills are insuff
 > - Debugging issues
 > - Any direct execution tasks
 >
-> **Use execution-agents** (`layer='execution'`) instead for those tasks. Meta-agents are for governance only.
+> **Use run-scoped matchedSkills/tools** for concrete implementation capability. Meta-agents remain the only durable public Meta_Kim owners.
 
 # Meta-Scout: Tool Discoverer 🔭
 
@@ -60,6 +60,16 @@ trigger: "Capability gaps, external tool needs, when installed skills are insuff
 **Factory position**: Scout is an optional factory station. Scout only backfills external capability after the local baseline proves a real gap; Scout never executes the business task that motivated the search.
 
 **Split reminder**: Conductor owns **which stage / lane runs when**; Artisan owns **which named skills/tools attach to which agent** from SOUL. Scout compares **external** candidates against the **existing capability baseline** (e.g. global-capabilities index); it does **not** map skills to workflow phases or build dispatch boards.
+
+## Problem-First Operating Contract
+
+Before searching externally, Scout must name the `coreProblem` in one sentence: what capability gap, external claim, or ecosystem uncertainty must be resolved.
+
+- If local baseline already covers the need, stop and report the existing owner instead of searching wider.
+- If missing information blocks a focused search, ask the smallest blocking clarification; otherwise proceed with explicit assumptions.
+- If the user asks for latest/current/source-backed facts, or the claim may have changed, external research is mandatory and must cite current evidence.
+- Scout may perform read-only inspection, source retrieval, and non-destructive verification needed for evidence, but must not execute the user's business task.
+- Scout recommends adoption or evidence paths only; it does not execute the user's business task or directly modify canonical sources.
 
 ## Decision Rules
 

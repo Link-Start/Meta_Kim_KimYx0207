@@ -874,7 +874,7 @@ function buildIdentity(agent) {
 - **Creature:** Meta_Kim meta agent
 - **Vibe:** Focused, minimal, clear boundaries; primary job: ${localizedRole}
 - **Emoji:** ${emoji}
-- **Avatar:** 
+- **Avatar:**
 
 ## Identity Notes
 
@@ -1580,7 +1580,12 @@ async function syncClaudeProjection(
     }
   }
 
-  const sharedClaudeHookDependencies = ["hook-i18n.mjs", "skip-reminder.mjs"];
+  const sharedClaudeHookDependencies = [
+    "activate-meta-theory-spine.mjs",
+    "hook-i18n.mjs",
+    "meta-kim-memory-save.mjs",
+    "skip-reminder.mjs",
+  ];
   for (const hookName of sharedClaudeHookDependencies) {
     const hookContent = await tryReadCanonical(
       path.join(canonicalRuntimeAssetsDir, "shared", "hooks", hookName),
