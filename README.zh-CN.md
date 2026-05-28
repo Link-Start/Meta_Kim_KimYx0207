@@ -63,7 +63,8 @@ npm run meta:validate
 
 1. 本文件 `README.zh-CN.md`
 2. `AGENTS.md`
-3. `docs/runtime-capability-matrix.md`
+3. 维护 Claude Code 行为时读 `CLAUDE.md`
+4. 维护 Cursor rules 时读 `canonical/runtime-assets/cursor/rules/meta-enforcement.mdc`
 
 ### 使用路径
 
@@ -485,7 +486,7 @@ Meta_Kim 当前已经映射了 4 个平台：
 | 平台 | 状态 | 映射方式 |
 | --- | --- | --- |
 | **Claude Code** | 完整支持 | `.claude/agents/*.md` + `SKILL.md` + hooks + MCP |
-| **Codex** | 完整支持 | `.codex/agents/*.toml` + `.agents/skills/` + 兼容 `.codex/skills/` + commands + hooks |
+| **Codex** | 完整支持 | `.codex/agents/*.toml` + `.agents/skills/` + commands + hooks |
 | **OpenClaw** | 完整支持 | `openclaw/` 目录结构 + workspaces + hooks |
 | **Cursor** | 完整支持 | `.cursor/agents/*.md` + skills + hooks + MCP |
 
@@ -517,7 +518,7 @@ flowchart TB
 | 能力面 | Claude Code | Codex | OpenClaw | Cursor |
 | --- | --- | --- | --- | --- |
 | **agent** | 原生 agents/subagents，项目级与用户级都成熟 | custom agents/subagents 很强 | workspace 型 agent，支持 agent-to-agent | agent 投影可用，较轻 |
-| **skill/references** | 原生 skill、references、全局技能生态完整 | `.agents/skills/` 是项目 skill 根；`.codex/skills/` 保留为兼容镜像 | workspace skill + installable skill | skill/references 接入较轻 |
+| **skill/references** | 原生 skill、references、全局技能生态完整 | `.agents/skills/` 是项目 skill 根 | workspace skill + installable skill | skill/references 接入较轻 |
 | **hook/自动化** | 项目级 hooks + settings.json + 插件生态 | 可信 `.codex/hooks.json` 项目/用户 hooks | Workspace boot / Plugin SDK hook 能力 | `.cursor/hooks.json` lowerCamel lifecycle hooks |
 | **MCP/配置** | 原生 MCP 与配置面完整 | 可接 runtime adapter 与 MCP | workspace config 明确 | 可接 MCP，但整体较轻 |
 | **治理闭环承载力** | **最高** | 高，但低于 Claude Code | 高，但形态不同 | 最轻 |
@@ -733,6 +734,23 @@ flowchart TB
 | `npm run meta:verify:all` | 全量校验（含 runtime smoke） |
 | `npm run meta:doctor:governance` | 治理健康体检 |
 
+### 当前有效规则在哪里
+
+| 场景 | 当前源头 |
+| --- | --- |
+| 仓库 / Codex 规则 | `AGENTS.md` |
+| Claude Code 规则 | `CLAUDE.md` |
+| Meta-theory skill | `canonical/skills/meta-theory/SKILL.md` |
+| Meta-theory 细节 | `canonical/skills/meta-theory/references/` |
+| Cursor 声明式兜底规则 | `canonical/runtime-assets/cursor/rules/meta-enforcement.mdc` |
+| Runtime 镜像 | 运行 `npm run meta:sync` 后生成到 `.claude/`、`.codex/`、`.cursor/`、`openclaw/` |
+
+拿不准时，先改 canonical 源，再跑 `npm run meta:sync` 和 `npm run meta:check`。
+
+### 怎么判断这么多脚本哪些有用
+
+先看 `package.json` 的 scripts。日常维护只认 README 里列出的 `meta:*` 命令；`scripts/` 下大多数文件是这些命令调用的内部 helper。正常使用从 `npm run meta:status`、`npm run meta:check`、`npm run meta:verify:all` 开始。只有当某个 `package.json` 命令或测试指向具体 helper 时，才需要单独看那个脚本。
+
 ### 技能与依赖
 
 | 命令 | 作用 |
@@ -853,8 +871,9 @@ Meta_Kim 使用 MCP（Model Context Protocol）来扩展 agent 的能力边界�
 
 - [README.md](README.md)
 - [AGENTS.md](AGENTS.md)
+- [CLAUDE.md](CLAUDE.md)
 - [config/contracts/workflow-contract.json](config/contracts/workflow-contract.json)
-- [docs/runtime-capability-matrix.md](docs/runtime-capability-matrix.md)
+- [canonical/runtime-assets/cursor/rules/meta-enforcement.mdc](canonical/runtime-assets/cursor/rules/meta-enforcement.mdc)
 
 ---
 
@@ -878,7 +897,7 @@ Meta_Kim 本身采用 MIT 协议。以下可选技能仓库通过 `node setup.mj
 | [KimYx0207/findskill](https://github.com/KimYx0207/findskill) | MIT |
 | [KimYx0207/HookPrompt](https://github.com/KimYx0207/HookPrompt) | MIT |
 | [obra/superpowers](https://github.com/obra/superpowers) | MIT |
-| [affaan-m/everything-claude-code](https://github.com/affaan-m/everything-claude-code) | MIT |
+| [affaan-m/ECC](https://github.com/affaan-m/ECC) | MIT |
 | [OthmanAdi/planning-with-files](https://github.com/OthmanAdi/planning-with-files) | MIT |
 | [HKUDS/CLI-Anything](https://github.com/HKUDS/CLI-Anything) | Apache 2.0 |
 | [garrytan/gstack](https://github.com/garrytan/gstack) | MIT |

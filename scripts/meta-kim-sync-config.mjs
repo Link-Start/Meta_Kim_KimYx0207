@@ -33,7 +33,19 @@ export const localOverridesPath = path.join(
   ".meta-kim",
   "local.overrides.json",
 );
-export const supportedTargetIds = ["claude", "codex", "openclaw", "cursor"];
+export const supportedTargetIds = [
+  "claude",
+  "codex",
+  "openclaw",
+  "cursor",
+  "opencode",
+  "qwen",
+  "zed",
+  "gemini",
+  "codebuddy",
+  "antigravity",
+  "joycode",
+];
 
 const runtimeProfileCatalog = {
   claude: {
@@ -87,10 +99,8 @@ const runtimeProfileCatalog = {
       ],
       outputPaths: {
         agentsDir: ".codex/agents",
-        skillsDir: ".codex/skills",
-        skillRoot: ".codex/skills/meta-theory",
-        projectSkillsDir: ".agents/skills",
-        projectSkillRoot: ".agents/skills/meta-theory",
+        skillsDir: ".agents/skills",
+        skillRoot: ".agents/skills/meta-theory",
         hooksDir: ".codex/hooks",
         hooksFile: ".codex/hooks.json",
         commandsDir: ".codex/commands",
@@ -273,7 +283,7 @@ export async function loadRuntimeProfiles(manifest = null) {
   const declaredTargets =
     resolvedManifest.supportedTargets?.length > 0
       ? normalizeTargets(resolvedManifest.supportedTargets)
-      : [...supportedTargetIds];
+      : Object.keys(runtimeProfileCatalog);
   const profiles = {};
 
   for (const targetId of declaredTargets) {
@@ -382,6 +392,34 @@ const runtimeHomeSpecs = {
     envKeys: ["META_KIM_CURSOR_HOME", "CURSOR_HOME"],
     defaultDir: ".cursor",
   },
+  opencode: {
+    envKeys: ["META_KIM_OPENCODE_HOME", "OPENCODE_HOME"],
+    defaultDir: ".opencode",
+  },
+  qwen: {
+    envKeys: ["META_KIM_QWEN_HOME", "QWEN_HOME"],
+    defaultDir: ".qwen",
+  },
+  zed: {
+    envKeys: ["META_KIM_ZED_HOME", "ZED_HOME"],
+    defaultDir: ".zed",
+  },
+  gemini: {
+    envKeys: ["META_KIM_GEMINI_HOME", "GEMINI_HOME"],
+    defaultDir: ".gemini",
+  },
+  codebuddy: {
+    envKeys: ["META_KIM_CODEBUDDY_HOME", "CODEBUDDY_HOME"],
+    defaultDir: ".codebuddy",
+  },
+  antigravity: {
+    envKeys: ["META_KIM_ANTIGRAVITY_HOME", "ANTIGRAVITY_HOME"],
+    defaultDir: ".agent",
+  },
+  joycode: {
+    envKeys: ["META_KIM_JOYCODE_HOME", "JOYCODE_HOME"],
+    defaultDir: ".joycode",
+  },
 };
 
 const runtimeProjectionLayouts = {
@@ -408,10 +446,9 @@ const runtimeProjectionLayouts = {
   codex: {
     project: {
       agentsDir: [".codex", "agents"],
-      skillsDir: [".codex", "skills"],
-      skillRoot: [".codex", "skills", "meta-theory"],
-      projectSkillsDir: [".agents", "skills"],
-      projectSkillRoot: [".agents", "skills", "meta-theory"],
+      skillsDir: [".agents", "skills"],
+      skillRoot: [".agents", "skills", "meta-theory"],
+      legacySkillRoot: [".codex", "skills", "meta-theory"],
       legacySkillFile: [".codex", "skills", "meta-theory.md"],
       legacySkillReferencesDir: [".codex", "skills", "references"],
       hooksDir: [".codex", "hooks"],

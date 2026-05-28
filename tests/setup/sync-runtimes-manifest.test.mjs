@@ -99,10 +99,6 @@ describe("sync-runtimes / inferProjectCategory", () => {
       CATEGORIES.D,
     );
     assert.equal(
-      inferProjectCategory(p(".codex/skills/meta-theory/SKILL.md"), REPO),
-      CATEGORIES.D,
-    );
-    assert.equal(
       inferProjectCategory(p(".cursor/skills/meta-theory/SKILL.md"), REPO),
       CATEGORIES.D,
     );
@@ -113,6 +109,10 @@ describe("sync-runtimes / inferProjectCategory", () => {
     assert.equal(
       inferProjectCategory(p(".agents/skills/meta-theory/SKILL.md"), REPO),
       CATEGORIES.D,
+    );
+    assert.equal(
+      inferProjectCategory(p(".codex/skills/meta-theory/SKILL.md"), REPO),
+      null,
     );
   });
 
@@ -456,6 +456,28 @@ describe("sync-runtimes / Cursor agents", () => {
     );
     assert.doesNotMatch(rendered, /nickname_candidates/);
     assert.doesNotMatch(rendered, /^name = /m);
+  });
+
+  test("does not duplicate Cursor mirror preamble when canonical body already carries it", () => {
+    const body = `# Meta-Warden
+
+> ⚠️ **GOVERNANCE LAYER AGENT — NOT FOR DIRECT EXECUTION**
+
+Body instructions`;
+    const rendered = buildCursorAgent({
+      id: "meta-warden",
+      title: "Meta-Warden",
+      summary: "Coordinates the team",
+      sourceFile: "canonical/agents/meta-warden.md",
+      description: "Coordinates dispatch and final synthesis",
+      body,
+    });
+
+    assert.equal((rendered.match(/^# Meta-Warden$/gm) ?? []).length, 1);
+    assert.equal(
+      (rendered.match(/GOVERNANCE LAYER AGENT — NOT FOR DIRECT EXECUTION/g) ?? []).length,
+      1,
+    );
   });
 });
 
