@@ -49,6 +49,7 @@ function fixture(t, { tools = "Read" } = {}) {
     ["interview-coach", "面试练习：按岗位提供真实经历反馈", ["陪我练面试", "我的经历怎么回答", "目标岗位怎么自我介绍"]],
     ["workplace-writer", "周报邮件整理：把实际工作进度写清楚", ["写一份工作周报", "邮件怎么说清进度", "汇报已完成和待确认的事"]],
     ["pricing-cost-analyst", "报价与成本测算：比较价格和现金投入", ["核算报价", "计算单笔成本", "几个价格怎么选"]],
+    ["concept-tutor", "概念讲解与答疑：解释学习者卡住的那一步", ["这道题为什么这样算", "这个概念我一直听不懂", "不要只给答案帮我讲明白"]],
   ]) {
     const capability = {
       id: `${id}-assist`, summary, useWhen: triggers,
@@ -97,7 +98,7 @@ test("discovery reads verified external contracts without executing their valida
   const { root, options } = fixture(t);
   const result = await discoverDependencyAgentContracts(options);
   assert.equal(result.sources[0].status, "verified_local");
-  assert.equal(result.capabilities.length, 9);
+  assert.equal(result.capabilities.length, 10);
   const resume = result.agents.find((agent) => agent.id === "kim-service:resume-editor");
   assert.equal(resume.ownerBindingMode, "run_scoped_owner_contract");
   assert.equal(resume.validCustomAgentDefinition, false);
@@ -123,9 +124,12 @@ test("plain Chinese requests match contract evidence while vague or unrelated re
     ["请围绕家常菜做选题清单", "kim-service:topic-planner"],
     ["这篇正文写好了，请给小红书标题和封面文字", "kim-service:headline-cover-optimizer"],
     ["把本周报价进度写成发给主管的周报", "kim-service:workplace-writer"],
+    ["我不明白分数除法为什么要乘倒数，请一步步讲解", "kim-service:concept-tutor"],
   ]) assert.equal(matchDependencyAgentContracts(request, agents).selected?.id, expected, request);
   assert.equal(matchDependencyAgentContracts("帮我处理一些事情", agents).selected, null);
   assert.equal(matchDependencyAgentContracts("修复 Node Hook timeout 的回归测试", agents).selected, null);
+  assert.equal(matchDependencyAgentContracts("Critical Thinking Fetch Deep Thinking Review 为什么 Codex 一直创建 agent 而不是找全局 agent", agents).selected, null);
+  assert.equal(matchDependencyAgentContracts("为什么一直没有反应", agents).selected, null);
   const sameBoundary = agents.filter((agent) => agent.componentId === "resume-editor");
   assert.equal(matchDependencyAgentContracts("按真实经历写简历", [...sameBoundary, { ...sameBoundary[0], id: "other:resume-editor" }]).selected, null);
 });
@@ -231,5 +235,18 @@ test("engineering work mentioning a professional domain does not select a read-o
   assert.equal(result.status, 0, result.stderr || result.stdout);
   const route = JSON.parse(result.stdout);
   assert.notEqual(route.recommendedRoute?.owner, "kim-service:product-listing-writer");
+  assert.equal(route.ownerDiscoveryPacket.dependencyAgentDiscovery.match.selected, null);
+});
+
+test("capability discovery complaints are not claimed by a tutor through generic question words", (t) => {
+  const { root } = fixture(t);
+  const result = spawnSync(process.execPath, ["scripts/select-execution-route.mjs", "--task", "Critical Thinking Fetch Deep Thinking Review 为什么 Codex 一直创建 agent 而不是找全局 agent", "--runtime", "codex", "--os", "windows", "--json"], {
+    cwd: process.cwd(), encoding: "utf8", timeout: 90_000,
+    env: { ...process.env, META_KIM_KIM_SERVICE_ROOT: root },
+  });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const route = JSON.parse(result.stdout);
+  assert.equal(route.recommendedRoute?.id, "execution-capability-discovery:codex:windows");
+  assert.notEqual(route.recommendedRoute?.selectedCapabilityProviders?.agent?.source, "dependency_agent_contract");
   assert.equal(route.ownerDiscoveryPacket.dependencyAgentDiscovery.match.selected, null);
 });
