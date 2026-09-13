@@ -8,6 +8,18 @@ The changelog explains the user-facing problem or risk each release solved, what
 
 ## Unreleased
 
+## [3.2.0] - 2026-09-14
+
+### Added
+
+- **Opt-in industry Agent discovery from Kim Service.** An explicitly bound Kim Service checkout supplies fifteen standalone roles for creators, ecommerce, career and workplace writing, education, and side businesses. Meta_Kim checks each contract and component's contents before selecting an owner through its existing route. The packages remain in Kim Service; selection does not claim native loading or verified model delivery.
+
+### Fixed
+
+- **Existing managed HookPrompt registrations receive the one-minute timeout.** Install/update and template refresh now agree on 60 seconds and refresh old managed entries in place. User commands, unrelated scripts with the same filename, matcher order, and unrelated fields are preserved (issue #81).
+- **Everyday deliverables enter the execution route.** Requests for resumes, weekly reports, customer replies, and similar confirmed industry tasks now reach the shared entry classifier. Serialized work orders preserve ordinary separators such as “search / recommendations” while still redacting private paths and credentials.
+- **Desktop acceptance recognizes current Codex completion events.** Native file changes, subagent activity, and child finals are read from both supported event formats. Freshness follows the bound event timestamps when Windows defers a live rollout's file modification time; stale events, mismatched sessions, failed changes, and altered source records remain rejected.
+
 ## [3.1.2] - 2026-09-10
 
 ### Fixed

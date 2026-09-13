@@ -19,6 +19,45 @@ function normalizeHookCommand(command) {
   return command.replace(/\\\\/g, "\\");
 }
 
+function nodeHookCommandParts(command) {
+  const normalized = normalizeHookCommand(command).replace(/\\/g, "/");
+  const match = normalized.match(
+    /^\s*node(?:\.exe)?\s+(?:"([^"]+)"|'([^']+)'|([^\s"';&|<>]+))([\s\S]*)$/u,
+  );
+  return match ? { script: match[1] ?? match[2] ?? match[3], tail: match[4] } : null;
+}
+
+function normalizedScriptPath(scriptPath) {
+  const normalized = normalizeHookCommand(scriptPath).replace(/\\/g, "/");
+  return /^[a-z]:\//iu.test(normalized) ? normalized.toLowerCase() : normalized;
+}
+
+/** Match the exact plain Node invocation written by the dependency installer. */
+export function isNodeHookScriptCommand(command, scriptPath) {
+  const parsed = nodeHookCommandParts(command);
+  return Boolean(
+    parsed && !parsed.tail.trim() &&
+    normalizedScriptPath(parsed.script) === normalizedScriptPath(scriptPath),
+  );
+}
+
+function templateHookPromptScriptPaths(template) {
+  const paths = new Set();
+  for (const blocks of Object.values(template)) {
+    for (const hook of blocks.flatMap((block) => block.hooks ?? [])) {
+      const parsed = nodeHookCommandParts(hook.command);
+      if (!parsed) continue;
+      if (isRawHookPromptUserPromptSubmitCommand(hook.command)) paths.add(parsed.script);
+      const home = parsed.script.match(/^(.*)\/hooks\/meta-kim\/[^/]+$/u)?.[1];
+      if (!home) continue;
+      paths.add(`${home}/hooks/user-prompt-submit.js`);
+      paths.add(`${home}/skills/hookprompt/.claude/hooks/user-prompt-submit.js`);
+      paths.add(`${home}/skills/hookprompt/.codex/hooks/user-prompt-submit.js`);
+    }
+  }
+  return [...paths];
+}
+
 export function isGlobalMetaKimManagedHookCommand(command) {
   if (typeof command !== "string") {
     return false;
@@ -198,7 +237,10 @@ export function buildMetaKimHooksTemplate(
 
 export function stripGlobalMetaKimHookEntriesFromBlocks(
   blocks,
-  { isManagedHookCommand = isGlobalMetaKimManagedHookCommand } = {},
+  {
+    isManagedHookCommand = isGlobalMetaKimManagedHookCommand,
+    isHookPromptCommand = () => false,
+  } = {},
 ) {
   return blocks
     .map((block) => ({
@@ -206,7 +248,7 @@ export function stripGlobalMetaKimHookEntriesFromBlocks(
       hooks: (block.hooks || []).filter(
         (h) =>
           !isManagedHookCommand(h.command || "") &&
-          !isRawHookPromptUserPromptSubmitCommand(h.command || ""),
+          !isHookPromptCommand(h.command || ""),
       ),
     }))
     .filter((block) => (block.hooks || []).length > 0);
@@ -327,6 +369,9 @@ export function mergeGlobalMetaKimHooksIntoSettings(
   options = {},
 ) {
   const next = { ...settings };
+  // The target template establishes the runtime home. A matching basename in
+  // another home, a suffix collision, or a shell wrapper is not ownership proof.
+  const hookPromptScripts = templateHookPromptScriptPaths(template);
   if (!next.hooks) {
     next.hooks = {};
   }
@@ -334,7 +379,11 @@ export function mergeGlobalMetaKimHooksIntoSettings(
   for (const [event, blocks] of Object.entries(next.hooks)) {
     const cleaned = stripGlobalMetaKimHookEntriesFromBlocks(
       blocks || [],
-      options,
+      {
+        ...options,
+        isHookPromptCommand: (command) => event === "UserPromptSubmit" &&
+          hookPromptScripts.some((script) => isNodeHookScriptCommand(command, script)),
+      },
     );
     if (cleaned.length > 0) {
       hooks[event] = cleaned;
