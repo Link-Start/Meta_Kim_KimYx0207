@@ -30,6 +30,7 @@
         "canNotDo": ["governance routing", "final user-goal acceptance", "automatic external writes", "prove runtime-native agent loading"],
         "notFor": ["replacing the nine governance owners", "implicit global installation", "adopting third-party governance architecture"],
         "verificationMethod": "node scripts/run-node-tests.mjs tests/governance/dependency-agent-discovery.test.mjs --concurrency 1",
+        "verificationMethods": ["node scripts/run-node-tests.mjs tests/governance/dependency-agent-discovery.test.mjs --concurrency 1", "npm run meta:route:validate"],
         "risk": ["index discovery is not live invocation", "review source contracts before binding", "do not execute dependency validation code during discovery"],
         "routeEligibility": "needs_probe",
         "writebackKey": "dependency:kim-service"

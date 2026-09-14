@@ -18,6 +18,7 @@ import {
 import { loadEffectiveRuntimeCapabilityClaims } from "./effective-runtime-capability-claims.mjs";
 import { evaluateRouteExecutionGate } from "./runtime-execution-gate.mjs";
 import { discoverDependencyAgentContracts, matchDependencyAgentContracts } from "./dependency-agent-discovery.mjs";
+import { durableCapabilityRequestsFromTask } from "./capability-request-intent.mjs";
 import {
   sanitizeCapabilityPublicationText,
   sanitizeCapabilityPublicationValue,
@@ -892,8 +893,20 @@ const dependencyAgentDiscovery = await discoverDependencyAgentContracts({
   projects: registryDependencies, projectRoot: repoPath("."), localOverrides,
 });
 const dependencyAgentMatches = matchDependencyAgentContracts(task, dependencyAgentDiscovery.agents);
-const dependencyAgentMatch = taskShape === "engineering_execution" || entrySignals.productBuildIntent === true
-  ? { ...dependencyAgentMatches, selected: null, reason: "engineering_work_exceeds_read_only_role_contract" }
+const explicitCapabilityLifecycle = durableCapabilityRequestsFromTask(task).some(
+  (request) => request.mutationAuthorized && request.candidateType !== "script",
+);
+const technicalScriptRequest = /脚本|\bscript\b/iu.test(task) &&
+  /\b(?:json|node(?:\.js)?|python|powershell|bash|shell|sql|javascript|typescript)\b|代码|程序|命令行/iu.test(task) &&
+  !/口播|分镜|拍摄|台词|screenplay|scriptwriting/iu.test(task);
+const dependencyAgentScopeExclusion = explicitCapabilityLifecycle
+  ? "explicit_capability_lifecycle_uses_existing_governance"
+  : ["engineering_execution", "platform_governance", "goal_contract"].includes(taskShape) ||
+      entrySignals.productBuildIntent === true || entrySignals.serialOrSlowRouteComplaint === true || technicalScriptRequest
+    ? "task_scope_exceeds_read_only_professional_contract"
+    : null;
+const dependencyAgentMatch = dependencyAgentScopeExclusion
+  ? { ...dependencyAgentMatches, selected: null, reason: dependencyAgentScopeExclusion }
   : dependencyAgentMatches;
 const repoCanonicalSkillProviders = capabilityEntries(repoCapabilityIndex, "skills").map((entry) => compactCapabilityProvider(entry, "repo_canonical_capability_index", "skills"));
 const projectRuntimeSkillProviders = await projectSkillProviders();
@@ -1170,7 +1183,7 @@ const runtimeScopedLocalGlobalAgents = runtimeScopedAgents
 const candidateExecutionAgents = [
   ...runtimeScopedProjectExecutionAgents,
   ...runtimeScopedLocalGlobalAgents,
-  ...dependencyAgentDiscovery.agents,
+  ...(dependencyAgentMatch.selected ? [dependencyAgentMatch.selected] : []),
 ]
   .filter(
     (agent) =>

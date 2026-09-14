@@ -1,7 +1,7 @@
 const segmenter = new Intl.Segmenter("zh", { granularity: "word" });
 const stopWords = new Set([
   "用户", "提供", "根据", "明确", "需要", "当前", "使用", "内容", "没有", "一个", "一些", "这些", "什么", "怎样", "怎么",
-  "是否", "哪些", "如何", "为什么", "一直", "知道", "不知", "不知道", "帮我", "帮助", "完成", "整理", "检查", "给出", "相关", "情况", "结果", "合适", "这个", "那个", "一下", "我的", "你的", "我们", "你们", "本次", "本轮",
+  "是否", "哪些", "如何", "为什么", "一直", "不要", "自己", "项目", "目标", "清单", "修改", "知道", "不知", "不知道", "帮我", "帮助", "完成", "整理", "检查", "给出", "相关", "情况", "结果", "合适", "这个", "那个", "一下", "我的", "你的", "我们", "你们", "本次", "本轮",
   "this", "that", "with", "from", "help", "writer", "planner", "editor", "analyst", "assist", "when", "user",
 ]);
 
@@ -20,6 +20,8 @@ function terms(value) {
     const left = segments[index];
     const right = segments[index + 1];
     if (/^\p{Script=Han}$/u.test(left.segment) && /^\p{Script=Han}$/u.test(right.segment)
+      && !/^[的地得了着把被和与在我你他她它给]$/u.test(left.segment)
+      && !/^[的地得了着把被和与在我你他她它给]$/u.test(right.segment)
       && left.index + left.segment.length === right.index) words.push(left.segment + right.segment);
   }
   return new Set(words.filter((term) => term.length >= 2 && !/^\d+$/u.test(term) && !stopWords.has(term)));

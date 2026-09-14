@@ -130,6 +130,8 @@ test("plain Chinese requests match contract evidence while vague or unrelated re
   assert.equal(matchDependencyAgentContracts("修复 Node Hook timeout 的回归测试", agents).selected, null);
   assert.equal(matchDependencyAgentContracts("Critical Thinking Fetch Deep Thinking Review 为什么 Codex 一直创建 agent 而不是找全局 agent", agents).selected, null);
   assert.equal(matchDependencyAgentContracts("为什么一直没有反应", agents).selected, null);
+  assert.equal(matchDependencyAgentContracts("先不要执行", agents).selected, null);
+  assert.equal(matchDependencyAgentContracts("帮我修改这个项目的清单", agents).selected, null);
   const sameBoundary = agents.filter((agent) => agent.componentId === "resume-editor");
   assert.equal(matchDependencyAgentContracts("按真实经历写简历", [...sameBoundary, { ...sameBoundary[0], id: "other:resume-editor" }]).selected, null);
 });
@@ -249,4 +251,27 @@ test("capability discovery complaints are not claimed by a tutor through generic
   assert.equal(route.recommendedRoute?.id, "execution-capability-discovery:codex:windows");
   assert.notEqual(route.recommendedRoute?.selectedCapabilityProviders?.agent?.source, "dependency_agent_contract");
   assert.equal(route.ownerDiscoveryPacket.dependencyAgentDiscovery.match.selected, null);
+});
+
+test("professional contracts cannot replace explicit governance or technical script workflows", async (t) => {
+  const { root } = fixture(t);
+  for (const task of [
+    "帮我把商品页文案的模糊目标整理成 Goal Prompt 和 Loop Prompt，先不要执行",
+    "需要一个稳定的脚本整理 release summary JSON，不需要新长期 agent。",
+    "请在当前项目新建 agent governed-release-auditor，负责审查发布配置并生成检查清单。",
+    "请在当前项目新建 agent resume-editor，负责整理简历并拒绝执行写操作。",
+    "为什么一直创建简历 agent，而不是复用已有的",
+  ]) {
+    await t.test(task, () => {
+      const result = spawnSync(process.execPath, ["scripts/select-execution-route.mjs", "--task", task, "--runtime", "codex", "--os", "windows", "--json"], {
+        cwd: process.cwd(), encoding: "utf8", timeout: 90_000,
+        env: { ...process.env, META_KIM_KIM_SERVICE_ROOT: root },
+      });
+      assert.equal(result.status, 0, result.stderr || result.stdout);
+      const route = JSON.parse(result.stdout);
+      assert.equal(route.ownerDiscoveryPacket.dependencyAgentDiscovery.match.selected, null);
+      assert.notEqual(route.recommendedRoute?.selectedCapabilityProviders?.agent?.source, "dependency_agent_contract");
+      if (route.taskShape === "goal_contract") assert.equal(route.recommendedRoute?.weapon, "goalpro");
+    });
+  }
 });
